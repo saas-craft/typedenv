@@ -50,16 +50,249 @@ func TestDecodeField(t *testing.T) {
 			},
 		},
 		"unhandled kind returns no error and leaves field unchanged": {
-			raw: "42",
+			raw: "value",
+			field: func() reflect.Value {
+				var c complex64
+				return reflect.ValueOf(&c).Elem()
+			},
+		},
+		"int field is set from raw": {
+			raw: "10",
 			field: func() reflect.Value {
 				var i int
 				return reflect.ValueOf(&i).Elem()
 			},
 			check: func(t *testing.T, field reflect.Value) {
-				if field.Int() != 0 {
-					t.Errorf("got %d, want 0", field.Int())
+				if got := field.Int(); got != 10 {
+					t.Errorf("got %d, want 10", got)
 				}
 			},
+		},
+		"int8 field is set from raw": {
+			raw: "8",
+			field: func() reflect.Value {
+				var i int8
+				return reflect.ValueOf(&i).Elem()
+			},
+			check: func(t *testing.T, field reflect.Value) {
+				if got := field.Int(); got != 8 {
+					t.Errorf("got %d, want 8", got)
+				}
+			},
+		},
+		"int16 field is set from raw": {
+			raw: "16",
+			field: func() reflect.Value {
+				var i int16
+				return reflect.ValueOf(&i).Elem()
+			},
+			check: func(t *testing.T, field reflect.Value) {
+				if got := field.Int(); got != 16 {
+					t.Errorf("got %d, want 16", got)
+				}
+			},
+		},
+		"int32 field is set from raw": {
+			raw: "32",
+			field: func() reflect.Value {
+				var i int32
+				return reflect.ValueOf(&i).Elem()
+			},
+			check: func(t *testing.T, field reflect.Value) {
+				if got := field.Int(); got != 32 {
+					t.Errorf("got %d, want 32", got)
+				}
+			},
+		},
+		"int64 field is set from raw": {
+			raw: "64",
+			field: func() reflect.Value {
+				var i int64
+				return reflect.ValueOf(&i).Elem()
+			},
+			check: func(t *testing.T, field reflect.Value) {
+				if got := field.Int(); got != 64 {
+					t.Errorf("got %d, want 64", got)
+				}
+			},
+		},
+		"int field with invalid raw returns error": {
+			raw:     "notanumber",
+			wantErr: true,
+			field: func() reflect.Value {
+				var i int
+				return reflect.ValueOf(&i).Elem()
+			},
+		},
+		"uint field is set from raw": {
+			raw: "10",
+			field: func() reflect.Value {
+				var u uint
+				return reflect.ValueOf(&u).Elem()
+			},
+			check: func(t *testing.T, field reflect.Value) {
+				if got := field.Uint(); got != 10 {
+					t.Errorf("got %d, want 10", got)
+				}
+			},
+		},
+		"uint8 field is set from raw": {
+			raw: "8",
+			field: func() reflect.Value {
+				var u uint8
+				return reflect.ValueOf(&u).Elem()
+			},
+			check: func(t *testing.T, field reflect.Value) {
+				if got := field.Uint(); got != 8 {
+					t.Errorf("got %d, want 8", got)
+				}
+			},
+		},
+		"uint16 field is set from raw": {
+			raw: "16",
+			field: func() reflect.Value {
+				var u uint16
+				return reflect.ValueOf(&u).Elem()
+			},
+			check: func(t *testing.T, field reflect.Value) {
+				if got := field.Uint(); got != 16 {
+					t.Errorf("got %d, want 16", got)
+				}
+			},
+		},
+		"uint32 field is set from raw": {
+			raw: "32",
+			field: func() reflect.Value {
+				var u uint32
+				return reflect.ValueOf(&u).Elem()
+			},
+			check: func(t *testing.T, field reflect.Value) {
+				if got := field.Uint(); got != 32 {
+					t.Errorf("got %d, want 32", got)
+				}
+			},
+		},
+		"uint64 field is set from raw": {
+			raw: "64",
+			field: func() reflect.Value {
+				var u uint64
+				return reflect.ValueOf(&u).Elem()
+			},
+			check: func(t *testing.T, field reflect.Value) {
+				if got := field.Uint(); got != 64 {
+					t.Errorf("got %d, want 64", got)
+				}
+			},
+		},
+		"uint field with invalid raw returns error": {
+			raw:     "-1",
+			wantErr: true,
+			field: func() reflect.Value {
+				var u uint
+				return reflect.ValueOf(&u).Elem()
+			},
+		},
+		"float32 field is set from raw": {
+			raw: "1.5",
+			field: func() reflect.Value {
+				var f float32
+				return reflect.ValueOf(&f).Elem()
+			},
+			check: func(t *testing.T, field reflect.Value) {
+				if got := field.Float(); got != 1.5 {
+					t.Errorf("got %v, want 1.5", got)
+				}
+			},
+		},
+		"float64 field is set from raw": {
+			raw: "1.5",
+			field: func() reflect.Value {
+				var f float64
+				return reflect.ValueOf(&f).Elem()
+			},
+			check: func(t *testing.T, field reflect.Value) {
+				if got := field.Float(); got != 1.5 {
+					t.Errorf("got %v, want 1.5", got)
+				}
+			},
+		},
+		"float field with invalid raw returns error": {
+			raw:     "notanumber",
+			wantErr: true,
+			field: func() reflect.Value {
+				var f float64
+				return reflect.ValueOf(&f).Elem()
+			},
+		},
+		"int8 field with overflow raw returns error": {
+			raw:     "128",
+			wantErr: true,
+			field:   func() reflect.Value { var i int8; return reflect.ValueOf(&i).Elem() },
+		},
+		"int8 field with underflow raw returns error": {
+			raw:     "-129",
+			wantErr: true,
+			field:   func() reflect.Value { var i int8; return reflect.ValueOf(&i).Elem() },
+		},
+		"int16 field with overflow raw returns error": {
+			raw:     "32768",
+			wantErr: true,
+			field:   func() reflect.Value { var i int16; return reflect.ValueOf(&i).Elem() },
+		},
+		"int16 field with underflow raw returns error": {
+			raw:     "-32769",
+			wantErr: true,
+			field:   func() reflect.Value { var i int16; return reflect.ValueOf(&i).Elem() },
+		},
+		"int32 field with overflow raw returns error": {
+			raw:     "2147483648",
+			wantErr: true,
+			field:   func() reflect.Value { var i int32; return reflect.ValueOf(&i).Elem() },
+		},
+		"int32 field with underflow raw returns error": {
+			raw:     "-2147483649",
+			wantErr: true,
+			field:   func() reflect.Value { var i int32; return reflect.ValueOf(&i).Elem() },
+		},
+		"int64 field with overflow raw returns error": {
+			raw:     "9223372036854775808",
+			wantErr: true,
+			field:   func() reflect.Value { var i int64; return reflect.ValueOf(&i).Elem() },
+		},
+		"int64 field with underflow raw returns error": {
+			raw:     "-9223372036854775809",
+			wantErr: true,
+			field:   func() reflect.Value { var i int64; return reflect.ValueOf(&i).Elem() },
+		},
+		"uint8 field with overflow raw returns error": {
+			raw:     "256",
+			wantErr: true,
+			field:   func() reflect.Value { var u uint8; return reflect.ValueOf(&u).Elem() },
+		},
+		"uint16 field with overflow raw returns error": {
+			raw:     "65536",
+			wantErr: true,
+			field:   func() reflect.Value { var u uint16; return reflect.ValueOf(&u).Elem() },
+		},
+		"uint32 field with overflow raw returns error": {
+			raw:     "4294967296",
+			wantErr: true,
+			field:   func() reflect.Value { var u uint32; return reflect.ValueOf(&u).Elem() },
+		},
+		"uint64 field with overflow raw returns error": {
+			raw:     "18446744073709551616",
+			wantErr: true,
+			field:   func() reflect.Value { var u uint64; return reflect.ValueOf(&u).Elem() },
+		},
+		"float32 field with overflow raw returns error": {
+			raw:     "3.5e38",
+			wantErr: true,
+			field:   func() reflect.Value { var f float32; return reflect.ValueOf(&f).Elem() },
+		},
+		"float64 field with overflow raw returns error": {
+			raw:     "1e309",
+			wantErr: true,
+			field:   func() reflect.Value { var f float64; return reflect.ValueOf(&f).Elem() },
 		},
 	}
 

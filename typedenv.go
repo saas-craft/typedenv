@@ -86,6 +86,30 @@ func decodeField(raw string, field reflect.Value) (err error) {
 		}
 
 		field.SetBool(b)
+
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		i, err := strconv.ParseInt(raw, 10, field.Type().Bits())
+		if err != nil {
+			return err
+		}
+
+		field.SetInt(i)
+
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		u, err := strconv.ParseUint(raw, 10, field.Type().Bits())
+		if err != nil {
+			return err
+		}
+
+		field.SetUint(u)
+
+	case reflect.Float32, reflect.Float64:
+		f, err := strconv.ParseFloat(raw, field.Type().Bits())
+		if err != nil {
+			return err
+		}
+
+		field.SetFloat(f)
 	}
 
 	return nil
