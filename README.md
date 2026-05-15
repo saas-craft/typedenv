@@ -2,12 +2,15 @@
 
 Strongly typed environment variable management for Go.
 
+Configure your requirements using a Go struct. TypedEnv validates required environment variables and returns explicit errors for missing or invalid values. .env files are intentionally unsupported to reduce accidental secret exposure, and to keep configuration sourcing explicit.
+
 ## Features
 
 - Errors for missing environment variables
 - Errors for type mismatches and parsing failures
-- Variable values are not exposed in logs or output
-- No unsafe
+- No variable values in errors or logs
+- No iteration of OS variables; look only at what's necessary
+- No unsafe usage
 - No panics
 
 ## Installation
