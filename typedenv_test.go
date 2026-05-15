@@ -268,6 +268,16 @@ func TestDecodeStructField(t *testing.T) {
 			},
 			src: nil, // must not be called
 		},
+		"unexported field without env tag is skipped": {
+			setup: func() (reflect.StructField, reflect.Value) {
+				type s struct {
+					name string //nolint:unused
+				}
+				v := reflect.ValueOf(&s{}).Elem()
+				return reflect.TypeFor[s]().Field(0), v.Field(0)
+			},
+			src: nil, // must not be called
+		},
 		"unexported field with env tag returns error": {
 			setup: func() (reflect.StructField, reflect.Value) {
 				type s struct {

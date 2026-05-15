@@ -44,11 +44,7 @@ func decodeStructField(t reflect.StructField, v reflect.Value, src source) error
 	}
 
 	if !t.IsExported() {
-		if tagged {
-			return fmt.Errorf("decodeStructField: can't decode into unexported field %v", t.Name)
-		}
-
-		return nil
+		return fmt.Errorf("decodeStructField: can't decode into unexported field %v", t.Name)
 	}
 
 	raw, ok := src(tag)
