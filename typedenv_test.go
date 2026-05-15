@@ -2,6 +2,7 @@ package typedenv
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -400,6 +401,54 @@ func TestDecodeStruct(t *testing.T) {
 			}
 			if got := len(joined.Unwrap()); got != 2 {
 				t.Errorf("got %d errors, want 2", got)
+			}
+		},
+	}
+
+	for name, run := range tests {
+		t.Run(name, run)
+	}
+}
+
+func TestLoad(t *testing.T) {
+	tests := map[string]func(t *testing.T){
+		"empty struct returns zero value": func(t *testing.T) {
+			type config struct{}
+			got, err := Load[config]()
+			if err != nil {
+				t.Fatalf("got error %v, want nil", err)
+			}
+			if got != (config{}) {
+				t.Errorf("got %v, want zero value", got)
+			}
+		},
+		"env vars are loaded into struct fields": func(t *testing.T) {
+			type config struct {
+				Host string `env:"TYPEDENV_TEST_HOST"`
+				Port int    `env:"TYPEDENV_TEST_PORT"`
+			}
+			t.Setenv("TYPEDENV_TEST_HOST", "localhost")
+			t.Setenv("TYPEDENV_TEST_PORT", "8080")
+
+			got, err := Load[config]()
+			if err != nil {
+				t.Fatalf("got error %v, want nil", err)
+			}
+			want := config{Host: "localhost", Port: 8080}
+			if got != want {
+				t.Errorf("got %v, want %v", got, want)
+			}
+		},
+		"missing env key error is wrapped with function name": func(t *testing.T) {
+			type config struct {
+				Value string `env:"TYPEDENV_TEST_MISSING"`
+			}
+			_, err := Load[config]()
+			if err == nil {
+				t.Fatal("got nil, want error")
+			}
+			if !strings.Contains(err.Error(), "TypedEnv.Load[]():") {
+				t.Errorf("got %q, want error containing \"TypedEnv.Load[]():\"", err.Error())
 			}
 		},
 	}
