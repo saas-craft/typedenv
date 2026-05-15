@@ -78,7 +78,7 @@ func decodeField(raw string, field reflect.Value) (err error) {
 	case reflect.Bool:
 		b, err := strconv.ParseBool(raw)
 		if err != nil {
-			return err
+			return fmt.Errorf("invalid %v: %w", field.Type(), errors.Unwrap(err))
 		}
 
 		field.SetBool(b)
@@ -86,7 +86,7 @@ func decodeField(raw string, field reflect.Value) (err error) {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		i, err := strconv.ParseInt(raw, 10, field.Type().Bits())
 		if err != nil {
-			return err
+			return fmt.Errorf("invalid %v: %w", field.Type(), errors.Unwrap(err))
 		}
 
 		field.SetInt(i)
@@ -94,7 +94,7 @@ func decodeField(raw string, field reflect.Value) (err error) {
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		u, err := strconv.ParseUint(raw, 10, field.Type().Bits())
 		if err != nil {
-			return err
+			return fmt.Errorf("invalid %v: %w", field.Type(), errors.Unwrap(err))
 		}
 
 		field.SetUint(u)
@@ -102,7 +102,7 @@ func decodeField(raw string, field reflect.Value) (err error) {
 	case reflect.Float32, reflect.Float64:
 		f, err := strconv.ParseFloat(raw, field.Type().Bits())
 		if err != nil {
-			return err
+			return fmt.Errorf("invalid %v: %w", field.Type(), errors.Unwrap(err))
 		}
 
 		field.SetFloat(f)

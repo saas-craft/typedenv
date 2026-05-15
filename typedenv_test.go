@@ -253,6 +253,29 @@ func TestDecodeField_Float(t *testing.T) {
 	})
 }
 
+func TestDecodeField_ErrorsOmitRawValue(t *testing.T) {
+	const secret = "s3cr3t-v@lue"
+
+	tests := map[string]func() reflect.Value{
+		"bool":    func() reflect.Value { var b bool; return reflect.ValueOf(&b).Elem() },
+		"int":     func() reflect.Value { var i int; return reflect.ValueOf(&i).Elem() },
+		"uint":    func() reflect.Value { var u uint; return reflect.ValueOf(&u).Elem() },
+		"float64": func() reflect.Value { var f float64; return reflect.ValueOf(&f).Elem() },
+	}
+
+	for name, fieldFn := range tests {
+		t.Run(name, func(t *testing.T) {
+			err := decodeField(secret, fieldFn())
+			if err == nil {
+				t.Fatal("expected error, got nil")
+			}
+			if strings.Contains(err.Error(), secret) {
+				t.Errorf("error exposes raw value: %v", err)
+			}
+		})
+	}
+}
+
 func TestDecodeStructField(t *testing.T) {
 	tests := map[string]struct {
 		setup   func() (reflect.StructField, reflect.Value)
