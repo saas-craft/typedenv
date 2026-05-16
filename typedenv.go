@@ -1,3 +1,4 @@
+// Package typedenv is a strongly typed environment variable manager.
 package typedenv
 
 import (
@@ -8,6 +9,10 @@ import (
 	"strconv"
 )
 
+// Load returns a new instance of the given struct, or an error. It fills
+// public fields with operating system environment variable values. The struct
+// fields must be tagged with `env`, which specifies the environment variable
+// key value to use eg. `env:"APP_ENV"`.
 func Load[S any]() (S, error) {
 	s, err := decodeStruct[S](os.LookupEnv)
 	if err != nil {
