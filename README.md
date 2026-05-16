@@ -1,4 +1,4 @@
-# TypedEnv
+# TypedEnv [![CI](https://github.com/saas-craft/typedenv/actions/workflows/ci.yml/badge.svg)](https://github.com/saas-craft/typedenv/actions/workflows/ci.yml) [![Go Report Card](https://goreportcard.com/badge/github.com/saas-craft/typedenv)](https://goreportcard.com/report/github.com/saas-craft/typedenv)
 
 Strongly typed environment variable management for Go.
 
