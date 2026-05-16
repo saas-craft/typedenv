@@ -27,14 +27,18 @@ package main
 import (
     "fmt"
     "log"
+    "net/url"
+    "time"
 
     "github.com/saas-craft/typedenv"
 )
 
 func main() {
     type config struct {
-        AppHost string `env:"HOST"`
-        AppPort int    `env:"PORT"`
+        AppHost    string        `env:"HOST"`
+        AppPort    int           `env:"PORT"`
+        Timeout    time.Duration `env:"TIMEOUT"`
+        ServiceURL url.URL       `env:"SERVICE_URL"`
     }
 
     cfg, err := typedenv.Load[config]()
@@ -45,6 +49,18 @@ func main() {
     fmt.Println(cfg)
 }
 ```
+
+## Supported Types
+
+| Go Type | Example value |
+| --- | --- |
+| `string` | `hello` |
+| `bool` | `true`, `false`, `1`, `0` |
+| `int`, `int8`, `int16`, `int32`, `int64` | `-42` |
+| `uint`, `uint8`, `uint16`, `uint32`, `uint64` | `42` |
+| `float32`, `float64` | `3.14` |
+| `time.Duration` | `1h30m`, `500ms`, `2s` |
+| `url.URL` | `https://saascraft.com/v1` |
 
 ## License
 

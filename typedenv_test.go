@@ -1,9 +1,11 @@
 package typedenv
 
 import (
+	"net/url"
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 func runDecodeFieldCases(t *testing.T, tests map[string]struct {
@@ -40,9 +42,10 @@ func TestDecodeField(t *testing.T) {
 			field:   func() reflect.Value { return reflect.ValueOf("immutable") },
 			wantErr: true,
 		},
-		"unhandled kind returns no error and leaves field unchanged": {
-			raw:   "value",
-			field: func() reflect.Value { var c complex64; return reflect.ValueOf(&c).Elem() },
+		"unsupported type returns error": {
+			raw:     "value",
+			field:   func() reflect.Value { var c complex64; return reflect.ValueOf(&c).Elem() },
+			wantErr: true,
 		},
 	})
 }
@@ -253,14 +256,75 @@ func TestDecodeField_Float(t *testing.T) {
 	})
 }
 
+func TestDecodeField_Duration(t *testing.T) {
+	runDecodeFieldCases(t, map[string]struct {
+		raw     string
+		field   func() reflect.Value
+		wantErr bool
+		check   func(t *testing.T, field reflect.Value)
+	}{
+		"duration field is set from valid raw": {
+			raw:   "1h30m",
+			field: func() reflect.Value { var d time.Duration; return reflect.ValueOf(&d).Elem() },
+			check: func(t *testing.T, field reflect.Value) {
+				if got := time.Duration(field.Int()); got != 90*time.Minute {
+					t.Errorf("got %v, want %v", got, 90*time.Minute)
+				}
+			},
+		},
+		"duration field with invalid raw returns error": {
+			raw:     "notaduration",
+			wantErr: true,
+			field:   func() reflect.Value { var d time.Duration; return reflect.ValueOf(&d).Elem() },
+		},
+		"duration field with plain integer raw returns error": {
+			raw:     "42",
+			wantErr: true,
+			field:   func() reflect.Value { var d time.Duration; return reflect.ValueOf(&d).Elem() },
+		},
+	})
+}
+
+func TestDecodeField_URL(t *testing.T) {
+	runDecodeFieldCases(t, map[string]struct {
+		raw     string
+		field   func() reflect.Value
+		wantErr bool
+		check   func(t *testing.T, field reflect.Value)
+	}{
+		"url field is set from valid raw": {
+			raw:   "https://example.com/path?q=1",
+			field: func() reflect.Value { var u url.URL; return reflect.ValueOf(&u).Elem() },
+			check: func(t *testing.T, field reflect.Value) {
+				got := field.Interface().(url.URL)
+				if got.Scheme != "https" {
+					t.Errorf("got scheme %q, want %q", got.Scheme, "https")
+				}
+				if got.Host != "example.com" {
+					t.Errorf("got host %q, want %q", got.Host, "example.com")
+				}
+				if got.Path != "/path" {
+					t.Errorf("got path %q, want %q", got.Path, "/path")
+				}
+			},
+		},
+		"url field with invalid raw returns error": {
+			raw:     "://no-scheme",
+			wantErr: true,
+			field:   func() reflect.Value { var u url.URL; return reflect.ValueOf(&u).Elem() },
+		},
+	})
+}
+
 func TestDecodeField_ErrorsOmitRawValue(t *testing.T) {
 	const secret = "s3cr3t-v@lue"
 
 	tests := map[string]func() reflect.Value{
-		"bool":    func() reflect.Value { var b bool; return reflect.ValueOf(&b).Elem() },
-		"int":     func() reflect.Value { var i int; return reflect.ValueOf(&i).Elem() },
-		"uint":    func() reflect.Value { var u uint; return reflect.ValueOf(&u).Elem() },
-		"float64": func() reflect.Value { var f float64; return reflect.ValueOf(&f).Elem() },
+		"bool":          func() reflect.Value { var b bool; return reflect.ValueOf(&b).Elem() },
+		"int":           func() reflect.Value { var i int; return reflect.ValueOf(&i).Elem() },
+		"uint":          func() reflect.Value { var u uint; return reflect.ValueOf(&u).Elem() },
+		"float64":       func() reflect.Value { var f float64; return reflect.ValueOf(&f).Elem() },
+		"time.Duration": func() reflect.Value { var d time.Duration; return reflect.ValueOf(&d).Elem() },
 	}
 
 	for name, fieldFn := range tests {
@@ -274,6 +338,19 @@ func TestDecodeField_ErrorsOmitRawValue(t *testing.T) {
 			}
 		})
 	}
+
+	// url.Parse accepts almost any string as a relative URL, so we prefix with
+	// "://" to force a parse failure while still embedding the secret in the raw value.
+	t.Run("url.URL", func(t *testing.T) {
+		var u url.URL
+		err := decodeField("://"+secret, reflect.ValueOf(&u).Elem())
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		if strings.Contains(err.Error(), secret) {
+			t.Errorf("error exposes raw value: %v", err)
+		}
+	})
 }
 
 func TestDecodeStructField(t *testing.T) {

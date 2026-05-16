@@ -4,9 +4,11 @@ package typedenv
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"reflect"
 	"strconv"
+	"time"
 )
 
 // Load returns a new instance of the given struct, or an error. It fills
@@ -76,42 +78,74 @@ func decodeField(raw string, field reflect.Value) (err error) {
 		return fmt.Errorf("decodeField: field %v not settable", field.Kind())
 	}
 
+	switch field.Type() {
+	case reflect.TypeFor[time.Duration]():
+		d, err := time.ParseDuration(raw)
+		if err != nil {
+			return fmt.Errorf("decodeField: invalid %v", field.Type())
+		}
+
+		field.SetInt(int64(d))
+
+		return nil
+
+	case reflect.TypeFor[url.URL]():
+		u, err := url.Parse(raw)
+		if err != nil {
+			return fmt.Errorf("decodeField: invalid %v", field.Type())
+		}
+
+		field.Set(reflect.ValueOf(*u))
+
+		return nil
+	}
+
 	switch field.Kind() {
 	case reflect.String:
 		field.SetString(raw)
 
+		return nil
+
 	case reflect.Bool:
 		b, err := strconv.ParseBool(raw)
 		if err != nil {
-			return fmt.Errorf("invalid %v: %w", field.Type(), errors.Unwrap(err))
+			return fmt.Errorf("decodeField: invalid %v: %w", field.Type(), errors.Unwrap(err))
 		}
 
 		field.SetBool(b)
 
+		return nil
+
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		i, err := strconv.ParseInt(raw, 10, field.Type().Bits())
 		if err != nil {
-			return fmt.Errorf("invalid %v: %w", field.Type(), errors.Unwrap(err))
+			return fmt.Errorf("decodeField: invalid %v: %w", field.Type(), errors.Unwrap(err))
 		}
 
 		field.SetInt(i)
 
+		return nil
+
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		u, err := strconv.ParseUint(raw, 10, field.Type().Bits())
 		if err != nil {
-			return fmt.Errorf("invalid %v: %w", field.Type(), errors.Unwrap(err))
+			return fmt.Errorf("decodeField: invalid %v: %w", field.Type(), errors.Unwrap(err))
 		}
 
 		field.SetUint(u)
 
+		return nil
+
 	case reflect.Float32, reflect.Float64:
 		f, err := strconv.ParseFloat(raw, field.Type().Bits())
 		if err != nil {
-			return fmt.Errorf("invalid %v: %w", field.Type(), errors.Unwrap(err))
+			return fmt.Errorf("decodeField: invalid %v: %w", field.Type(), errors.Unwrap(err))
 		}
 
 		field.SetFloat(f)
+
+		return nil
 	}
 
-	return nil
+	return fmt.Errorf("decodeField: unsupported type %v", field.Type())
 }
