@@ -8,60 +8,60 @@ import (
 	"time"
 )
 
-func runDecodeFieldCases(t *testing.T, tests map[string]struct {
+func runDecodeValueCases(t *testing.T, tests map[string]struct {
 	raw     string
-	field   func() reflect.Value
+	value   func() reflect.Value
 	wantErr bool
-	check   func(t *testing.T, field reflect.Value)
+	check   func(t *testing.T, val reflect.Value)
 },
 ) {
 	t.Helper()
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			field := tc.field()
-			err := decodeField(tc.raw, field)
+			val := tc.value()
+			err := decodeValue(tc.raw, val)
 			if (err != nil) != tc.wantErr {
-				t.Errorf("decodeField() error = %v, wantErr %v", err, tc.wantErr)
+				t.Errorf("decodeValue() error = %v, wantErr %v", err, tc.wantErr)
 			}
 			if err == nil && tc.check != nil {
-				tc.check(t, field)
+				tc.check(t, val)
 			}
 		})
 	}
 }
 
-func TestDecodeField(t *testing.T) {
-	runDecodeFieldCases(t, map[string]struct {
+func TestDecodeValue(t *testing.T) {
+	runDecodeValueCases(t, map[string]struct {
 		raw     string
-		field   func() reflect.Value
+		value   func() reflect.Value
 		wantErr bool
-		check   func(t *testing.T, field reflect.Value)
+		check   func(t *testing.T, val reflect.Value)
 	}{
-		"non-settable field returns error": {
+		"non-settable value returns error": {
 			raw:     "value",
-			field:   func() reflect.Value { return reflect.ValueOf("immutable") },
+			value:   func() reflect.Value { return reflect.ValueOf("immutable") },
 			wantErr: true,
 		},
 		"unsupported type returns error": {
 			raw:     "value",
-			field:   func() reflect.Value { var c complex64; return reflect.ValueOf(&c).Elem() },
+			value:   func() reflect.Value { var c complex64; return reflect.ValueOf(&c).Elem() },
 			wantErr: true,
 		},
 	})
 }
 
-func TestDecodeField_String(t *testing.T) {
-	runDecodeFieldCases(t, map[string]struct {
+func TestDecodeValue_String(t *testing.T) {
+	runDecodeValueCases(t, map[string]struct {
 		raw     string
-		field   func() reflect.Value
+		value   func() reflect.Value
 		wantErr bool
-		check   func(t *testing.T, field reflect.Value)
+		check   func(t *testing.T, val reflect.Value)
 	}{
-		"string field is set from raw": {
+		"string value is set from raw": {
 			raw:   "hello",
-			field: func() reflect.Value { var s string; return reflect.ValueOf(&s).Elem() },
-			check: func(t *testing.T, field reflect.Value) {
-				if got := field.String(); got != "hello" {
+			value: func() reflect.Value { var s string; return reflect.ValueOf(&s).Elem() },
+			check: func(t *testing.T, val reflect.Value) {
+				if got := val.String(); got != "hello" {
 					t.Errorf("got %q, want %q", got, "hello")
 				}
 			},
@@ -69,234 +69,234 @@ func TestDecodeField_String(t *testing.T) {
 	})
 }
 
-func TestDecodeField_Bool(t *testing.T) {
-	runDecodeFieldCases(t, map[string]struct {
+func TestDecodeValue_Bool(t *testing.T) {
+	runDecodeValueCases(t, map[string]struct {
 		raw     string
-		field   func() reflect.Value
+		value   func() reflect.Value
 		wantErr bool
-		check   func(t *testing.T, field reflect.Value)
+		check   func(t *testing.T, val reflect.Value)
 	}{
-		"bool field is set from valid raw": {
+		"bool value is set from valid raw": {
 			raw:   "true",
-			field: func() reflect.Value { var b bool; return reflect.ValueOf(&b).Elem() },
-			check: func(t *testing.T, field reflect.Value) {
-				if !field.Bool() {
+			value: func() reflect.Value { var b bool; return reflect.ValueOf(&b).Elem() },
+			check: func(t *testing.T, val reflect.Value) {
+				if !val.Bool() {
 					t.Error("got false, want true")
 				}
 			},
 		},
-		"bool field with invalid raw returns error": {
+		"bool value with invalid raw returns error": {
 			raw:     "notabool",
 			wantErr: true,
-			field:   func() reflect.Value { var b bool; return reflect.ValueOf(&b).Elem() },
+			value:   func() reflect.Value { var b bool; return reflect.ValueOf(&b).Elem() },
 		},
 	})
 }
 
-func TestDecodeField_Int(t *testing.T) {
-	runDecodeFieldCases(t, map[string]struct {
+func TestDecodeValue_Int(t *testing.T) {
+	runDecodeValueCases(t, map[string]struct {
 		raw     string
-		field   func() reflect.Value
+		value   func() reflect.Value
 		wantErr bool
-		check   func(t *testing.T, field reflect.Value)
+		check   func(t *testing.T, val reflect.Value)
 	}{
-		"int field is set from raw": {
+		"int value is set from raw": {
 			raw:   "10",
-			field: func() reflect.Value { var i int; return reflect.ValueOf(&i).Elem() },
-			check: func(t *testing.T, field reflect.Value) {
-				if got := field.Int(); got != 10 {
+			value: func() reflect.Value { var i int; return reflect.ValueOf(&i).Elem() },
+			check: func(t *testing.T, val reflect.Value) {
+				if got := val.Int(); got != 10 {
 					t.Errorf("got %d, want 10", got)
 				}
 			},
 		},
-		"int8 field is set from raw": {
+		"int8 value is set from raw": {
 			raw:   "8",
-			field: func() reflect.Value { var i int8; return reflect.ValueOf(&i).Elem() },
-			check: func(t *testing.T, field reflect.Value) {
-				if got := field.Int(); got != 8 {
+			value: func() reflect.Value { var i int8; return reflect.ValueOf(&i).Elem() },
+			check: func(t *testing.T, val reflect.Value) {
+				if got := val.Int(); got != 8 {
 					t.Errorf("got %d, want 8", got)
 				}
 			},
 		},
-		"int16 field is set from raw": {
+		"int16 value is set from raw": {
 			raw:   "16",
-			field: func() reflect.Value { var i int16; return reflect.ValueOf(&i).Elem() },
-			check: func(t *testing.T, field reflect.Value) {
-				if got := field.Int(); got != 16 {
+			value: func() reflect.Value { var i int16; return reflect.ValueOf(&i).Elem() },
+			check: func(t *testing.T, val reflect.Value) {
+				if got := val.Int(); got != 16 {
 					t.Errorf("got %d, want 16", got)
 				}
 			},
 		},
-		"int32 field is set from raw": {
+		"int32 value is set from raw": {
 			raw:   "32",
-			field: func() reflect.Value { var i int32; return reflect.ValueOf(&i).Elem() },
-			check: func(t *testing.T, field reflect.Value) {
-				if got := field.Int(); got != 32 {
+			value: func() reflect.Value { var i int32; return reflect.ValueOf(&i).Elem() },
+			check: func(t *testing.T, val reflect.Value) {
+				if got := val.Int(); got != 32 {
 					t.Errorf("got %d, want 32", got)
 				}
 			},
 		},
-		"int64 field is set from raw": {
+		"int64 value is set from raw": {
 			raw:   "64",
-			field: func() reflect.Value { var i int64; return reflect.ValueOf(&i).Elem() },
-			check: func(t *testing.T, field reflect.Value) {
-				if got := field.Int(); got != 64 {
+			value: func() reflect.Value { var i int64; return reflect.ValueOf(&i).Elem() },
+			check: func(t *testing.T, val reflect.Value) {
+				if got := val.Int(); got != 64 {
 					t.Errorf("got %d, want 64", got)
 				}
 			},
 		},
-		"int field with invalid raw returns error": {
+		"int value with invalid raw returns error": {
 			raw:     "notanumber",
 			wantErr: true,
-			field:   func() reflect.Value { var i int; return reflect.ValueOf(&i).Elem() },
+			value:   func() reflect.Value { var i int; return reflect.ValueOf(&i).Elem() },
 		},
-		"int8 field with overflow raw returns error":   {raw: "128", wantErr: true, field: func() reflect.Value { var i int8; return reflect.ValueOf(&i).Elem() }},
-		"int8 field with underflow raw returns error":  {raw: "-129", wantErr: true, field: func() reflect.Value { var i int8; return reflect.ValueOf(&i).Elem() }},
-		"int16 field with overflow raw returns error":  {raw: "32768", wantErr: true, field: func() reflect.Value { var i int16; return reflect.ValueOf(&i).Elem() }},
-		"int16 field with underflow raw returns error": {raw: "-32769", wantErr: true, field: func() reflect.Value { var i int16; return reflect.ValueOf(&i).Elem() }},
-		"int32 field with overflow raw returns error":  {raw: "2147483648", wantErr: true, field: func() reflect.Value { var i int32; return reflect.ValueOf(&i).Elem() }},
-		"int32 field with underflow raw returns error": {raw: "-2147483649", wantErr: true, field: func() reflect.Value { var i int32; return reflect.ValueOf(&i).Elem() }},
-		"int64 field with overflow raw returns error":  {raw: "9223372036854775808", wantErr: true, field: func() reflect.Value { var i int64; return reflect.ValueOf(&i).Elem() }},
-		"int64 field with underflow raw returns error": {raw: "-9223372036854775809", wantErr: true, field: func() reflect.Value { var i int64; return reflect.ValueOf(&i).Elem() }},
+		"int8 value with overflow raw returns error":   {raw: "128", wantErr: true, value: func() reflect.Value { var i int8; return reflect.ValueOf(&i).Elem() }},
+		"int8 value with underflow raw returns error":  {raw: "-129", wantErr: true, value: func() reflect.Value { var i int8; return reflect.ValueOf(&i).Elem() }},
+		"int16 value with overflow raw returns error":  {raw: "32768", wantErr: true, value: func() reflect.Value { var i int16; return reflect.ValueOf(&i).Elem() }},
+		"int16 value with underflow raw returns error": {raw: "-32769", wantErr: true, value: func() reflect.Value { var i int16; return reflect.ValueOf(&i).Elem() }},
+		"int32 value with overflow raw returns error":  {raw: "2147483648", wantErr: true, value: func() reflect.Value { var i int32; return reflect.ValueOf(&i).Elem() }},
+		"int32 value with underflow raw returns error": {raw: "-2147483649", wantErr: true, value: func() reflect.Value { var i int32; return reflect.ValueOf(&i).Elem() }},
+		"int64 value with overflow raw returns error":  {raw: "9223372036854775808", wantErr: true, value: func() reflect.Value { var i int64; return reflect.ValueOf(&i).Elem() }},
+		"int64 value with underflow raw returns error": {raw: "-9223372036854775809", wantErr: true, value: func() reflect.Value { var i int64; return reflect.ValueOf(&i).Elem() }},
 	})
 }
 
-func TestDecodeField_Uint(t *testing.T) {
-	runDecodeFieldCases(t, map[string]struct {
+func TestDecodeValue_Uint(t *testing.T) {
+	runDecodeValueCases(t, map[string]struct {
 		raw     string
-		field   func() reflect.Value
+		value   func() reflect.Value
 		wantErr bool
-		check   func(t *testing.T, field reflect.Value)
+		check   func(t *testing.T, val reflect.Value)
 	}{
-		"uint field is set from raw": {
+		"uint value is set from raw": {
 			raw:   "10",
-			field: func() reflect.Value { var u uint; return reflect.ValueOf(&u).Elem() },
-			check: func(t *testing.T, field reflect.Value) {
-				if got := field.Uint(); got != 10 {
+			value: func() reflect.Value { var u uint; return reflect.ValueOf(&u).Elem() },
+			check: func(t *testing.T, val reflect.Value) {
+				if got := val.Uint(); got != 10 {
 					t.Errorf("got %d, want 10", got)
 				}
 			},
 		},
-		"uint8 field is set from raw": {
+		"uint8 value is set from raw": {
 			raw:   "8",
-			field: func() reflect.Value { var u uint8; return reflect.ValueOf(&u).Elem() },
-			check: func(t *testing.T, field reflect.Value) {
-				if got := field.Uint(); got != 8 {
+			value: func() reflect.Value { var u uint8; return reflect.ValueOf(&u).Elem() },
+			check: func(t *testing.T, val reflect.Value) {
+				if got := val.Uint(); got != 8 {
 					t.Errorf("got %d, want 8", got)
 				}
 			},
 		},
-		"uint16 field is set from raw": {
+		"uint16 value is set from raw": {
 			raw:   "16",
-			field: func() reflect.Value { var u uint16; return reflect.ValueOf(&u).Elem() },
-			check: func(t *testing.T, field reflect.Value) {
-				if got := field.Uint(); got != 16 {
+			value: func() reflect.Value { var u uint16; return reflect.ValueOf(&u).Elem() },
+			check: func(t *testing.T, val reflect.Value) {
+				if got := val.Uint(); got != 16 {
 					t.Errorf("got %d, want 16", got)
 				}
 			},
 		},
-		"uint32 field is set from raw": {
+		"uint32 value is set from raw": {
 			raw:   "32",
-			field: func() reflect.Value { var u uint32; return reflect.ValueOf(&u).Elem() },
-			check: func(t *testing.T, field reflect.Value) {
-				if got := field.Uint(); got != 32 {
+			value: func() reflect.Value { var u uint32; return reflect.ValueOf(&u).Elem() },
+			check: func(t *testing.T, val reflect.Value) {
+				if got := val.Uint(); got != 32 {
 					t.Errorf("got %d, want 32", got)
 				}
 			},
 		},
-		"uint64 field is set from raw": {
+		"uint64 value is set from raw": {
 			raw:   "64",
-			field: func() reflect.Value { var u uint64; return reflect.ValueOf(&u).Elem() },
-			check: func(t *testing.T, field reflect.Value) {
-				if got := field.Uint(); got != 64 {
+			value: func() reflect.Value { var u uint64; return reflect.ValueOf(&u).Elem() },
+			check: func(t *testing.T, val reflect.Value) {
+				if got := val.Uint(); got != 64 {
 					t.Errorf("got %d, want 64", got)
 				}
 			},
 		},
-		"uint field with invalid raw returns error": {
+		"uint value with invalid raw returns error": {
 			raw:     "-1",
 			wantErr: true,
-			field:   func() reflect.Value { var u uint; return reflect.ValueOf(&u).Elem() },
+			value:   func() reflect.Value { var u uint; return reflect.ValueOf(&u).Elem() },
 		},
-		"uint8 field with overflow raw returns error":  {raw: "256", wantErr: true, field: func() reflect.Value { var u uint8; return reflect.ValueOf(&u).Elem() }},
-		"uint16 field with overflow raw returns error": {raw: "65536", wantErr: true, field: func() reflect.Value { var u uint16; return reflect.ValueOf(&u).Elem() }},
-		"uint32 field with overflow raw returns error": {raw: "4294967296", wantErr: true, field: func() reflect.Value { var u uint32; return reflect.ValueOf(&u).Elem() }},
-		"uint64 field with overflow raw returns error": {raw: "18446744073709551616", wantErr: true, field: func() reflect.Value { var u uint64; return reflect.ValueOf(&u).Elem() }},
+		"uint8 value with overflow raw returns error":  {raw: "256", wantErr: true, value: func() reflect.Value { var u uint8; return reflect.ValueOf(&u).Elem() }},
+		"uint16 value with overflow raw returns error": {raw: "65536", wantErr: true, value: func() reflect.Value { var u uint16; return reflect.ValueOf(&u).Elem() }},
+		"uint32 value with overflow raw returns error": {raw: "4294967296", wantErr: true, value: func() reflect.Value { var u uint32; return reflect.ValueOf(&u).Elem() }},
+		"uint64 value with overflow raw returns error": {raw: "18446744073709551616", wantErr: true, value: func() reflect.Value { var u uint64; return reflect.ValueOf(&u).Elem() }},
 	})
 }
 
-func TestDecodeField_Float(t *testing.T) {
-	runDecodeFieldCases(t, map[string]struct {
+func TestDecodeValue_Float(t *testing.T) {
+	runDecodeValueCases(t, map[string]struct {
 		raw     string
-		field   func() reflect.Value
+		value   func() reflect.Value
 		wantErr bool
-		check   func(t *testing.T, field reflect.Value)
+		check   func(t *testing.T, val reflect.Value)
 	}{
-		"float32 field is set from raw": {
+		"float32 value is set from raw": {
 			raw:   "1.5",
-			field: func() reflect.Value { var f float32; return reflect.ValueOf(&f).Elem() },
-			check: func(t *testing.T, field reflect.Value) {
-				if got := field.Float(); got != 1.5 {
+			value: func() reflect.Value { var f float32; return reflect.ValueOf(&f).Elem() },
+			check: func(t *testing.T, val reflect.Value) {
+				if got := val.Float(); got != 1.5 {
 					t.Errorf("got %v, want 1.5", got)
 				}
 			},
 		},
-		"float64 field is set from raw": {
+		"float64 value is set from raw": {
 			raw:   "1.5",
-			field: func() reflect.Value { var f float64; return reflect.ValueOf(&f).Elem() },
-			check: func(t *testing.T, field reflect.Value) {
-				if got := field.Float(); got != 1.5 {
+			value: func() reflect.Value { var f float64; return reflect.ValueOf(&f).Elem() },
+			check: func(t *testing.T, val reflect.Value) {
+				if got := val.Float(); got != 1.5 {
 					t.Errorf("got %v, want 1.5", got)
 				}
 			},
 		},
-		"float field with invalid raw returns error":    {raw: "notanumber", wantErr: true, field: func() reflect.Value { var f float64; return reflect.ValueOf(&f).Elem() }},
-		"float32 field with overflow raw returns error": {raw: "3.5e38", wantErr: true, field: func() reflect.Value { var f float32; return reflect.ValueOf(&f).Elem() }},
-		"float64 field with overflow raw returns error": {raw: "1e309", wantErr: true, field: func() reflect.Value { var f float64; return reflect.ValueOf(&f).Elem() }},
+		"float value with invalid raw returns error":    {raw: "notanumber", wantErr: true, value: func() reflect.Value { var f float64; return reflect.ValueOf(&f).Elem() }},
+		"float32 value with overflow raw returns error": {raw: "3.5e38", wantErr: true, value: func() reflect.Value { var f float32; return reflect.ValueOf(&f).Elem() }},
+		"float64 value with overflow raw returns error": {raw: "1e309", wantErr: true, value: func() reflect.Value { var f float64; return reflect.ValueOf(&f).Elem() }},
 	})
 }
 
-func TestDecodeField_Duration(t *testing.T) {
-	runDecodeFieldCases(t, map[string]struct {
+func TestDecodeValue_Duration(t *testing.T) {
+	runDecodeValueCases(t, map[string]struct {
 		raw     string
-		field   func() reflect.Value
+		value   func() reflect.Value
 		wantErr bool
-		check   func(t *testing.T, field reflect.Value)
+		check   func(t *testing.T, val reflect.Value)
 	}{
-		"duration field is set from valid raw": {
+		"duration value is set from valid raw": {
 			raw:   "1h30m",
-			field: func() reflect.Value { var d time.Duration; return reflect.ValueOf(&d).Elem() },
-			check: func(t *testing.T, field reflect.Value) {
-				if got := time.Duration(field.Int()); got != 90*time.Minute {
+			value: func() reflect.Value { var d time.Duration; return reflect.ValueOf(&d).Elem() },
+			check: func(t *testing.T, val reflect.Value) {
+				if got := time.Duration(val.Int()); got != 90*time.Minute {
 					t.Errorf("got %v, want %v", got, 90*time.Minute)
 				}
 			},
 		},
-		"duration field with invalid raw returns error": {
+		"duration value with invalid raw returns error": {
 			raw:     "notaduration",
 			wantErr: true,
-			field:   func() reflect.Value { var d time.Duration; return reflect.ValueOf(&d).Elem() },
+			value:   func() reflect.Value { var d time.Duration; return reflect.ValueOf(&d).Elem() },
 		},
-		"duration field with plain integer raw returns error": {
+		"duration value with plain integer raw returns error": {
 			raw:     "42",
 			wantErr: true,
-			field:   func() reflect.Value { var d time.Duration; return reflect.ValueOf(&d).Elem() },
+			value:   func() reflect.Value { var d time.Duration; return reflect.ValueOf(&d).Elem() },
 		},
 	})
 }
 
-func TestDecodeField_URL(t *testing.T) {
-	runDecodeFieldCases(t, map[string]struct {
+func TestDecodeValue_URL(t *testing.T) {
+	runDecodeValueCases(t, map[string]struct {
 		raw     string
-		field   func() reflect.Value
+		value   func() reflect.Value
 		wantErr bool
-		check   func(t *testing.T, field reflect.Value)
+		check   func(t *testing.T, val reflect.Value)
 	}{
-		"url field is set from valid raw": {
+		"url value is set from valid raw": {
 			raw:   "https://example.com/path?q=1",
-			field: func() reflect.Value { var u url.URL; return reflect.ValueOf(&u).Elem() },
-			check: func(t *testing.T, field reflect.Value) {
-				got := field.Interface().(url.URL)
+			value: func() reflect.Value { var u url.URL; return reflect.ValueOf(&u).Elem() },
+			check: func(t *testing.T, val reflect.Value) {
+				got := val.Interface().(url.URL)
 				if got.Scheme != "https" {
 					t.Errorf("got scheme %q, want %q", got.Scheme, "https")
 				}
@@ -308,15 +308,15 @@ func TestDecodeField_URL(t *testing.T) {
 				}
 			},
 		},
-		"url field with invalid raw returns error": {
+		"url value with invalid raw returns error": {
 			raw:     "://no-scheme",
 			wantErr: true,
-			field:   func() reflect.Value { var u url.URL; return reflect.ValueOf(&u).Elem() },
+			value:   func() reflect.Value { var u url.URL; return reflect.ValueOf(&u).Elem() },
 		},
 	})
 }
 
-func TestDecodeField_ErrorsOmitRawValue(t *testing.T) {
+func TestDecodeValue_ErrorsOmitRawValue(t *testing.T) {
 	const secret = "s3cr3t-v@lue"
 
 	tests := map[string]func() reflect.Value{
@@ -327,9 +327,9 @@ func TestDecodeField_ErrorsOmitRawValue(t *testing.T) {
 		"time.Duration": func() reflect.Value { var d time.Duration; return reflect.ValueOf(&d).Elem() },
 	}
 
-	for name, fieldFn := range tests {
+	for name, valueFn := range tests {
 		t.Run(name, func(t *testing.T) {
-			err := decodeField(secret, fieldFn())
+			err := decodeValue(secret, valueFn())
 			if err == nil {
 				t.Fatal("expected error, got nil")
 			}
@@ -343,7 +343,7 @@ func TestDecodeField_ErrorsOmitRawValue(t *testing.T) {
 	// "://" to force a parse failure while still embedding the secret in the raw value.
 	t.Run("url.URL", func(t *testing.T) {
 		var u url.URL
-		err := decodeField("://"+secret, reflect.ValueOf(&u).Elem())
+		err := decodeValue("://"+secret, reflect.ValueOf(&u).Elem())
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -557,7 +557,7 @@ func TestLoad(t *testing.T) {
 			if err == nil {
 				t.Fatal("got nil, want error")
 			}
-			if !strings.Contains(err.Error(), "TypedEnv.Load[]():") {
+			if !strings.Contains(err.Error(), "typedenv:") {
 				t.Errorf("got %q, want error containing \"TypedEnv.Load[]():\"", err.Error())
 			}
 		},
