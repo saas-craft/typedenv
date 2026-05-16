@@ -37,8 +37,9 @@ func main() {
         AppPort int    `env:"PORT"`
     }
 
-    if cfg, err := typedenv.Load[config](); err != nil {
-        log.Fatalf("load config: %w", err)
+    cfg, err := typedenv.Load[config]()
+    if err != nil {
+        log.Fatalf("load config: %v", err)
     }
 
     fmt.Println(cfg)
