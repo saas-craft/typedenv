@@ -19,7 +19,6 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
-          cache: true
 
       - name: tidy
         run: go mod tidy
