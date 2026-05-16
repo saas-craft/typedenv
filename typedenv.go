@@ -28,15 +28,15 @@ type source func(key string) (string, bool)
 
 func decodeStruct[S any](src source) (S, error) {
 	var s S
-	v := reflect.ValueOf(&s).Elem()
-	if v.Kind() != reflect.Struct {
-		return s, fmt.Errorf("decode: expected struct, got %v", v.Kind())
+	structVal := reflect.ValueOf(&s).Elem()
+	if structVal.Kind() != reflect.Struct {
+		return s, fmt.Errorf("decode: expected struct, got %v", structVal.Kind())
 	}
 
 	var errs []error
-	t := v.Type()
-	for i := 0; i < t.NumField(); i++ {
-		if err := decodeStructField(t.Field(i), v.Field(i), src); err != nil {
+	structType := structVal.Type()
+	for i := range structType.NumField() {
+		if err := decodeStructField(structType.Field(i), structVal.Field(i), src); err != nil {
 			errs = append(errs, err)
 		}
 	}
