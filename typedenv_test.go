@@ -557,7 +557,7 @@ func TestLoad(t *testing.T) {
 			if err == nil {
 				t.Fatal("got nil, want error")
 			}
-			if !strings.Contains(err.Error(), "TypedEnv.Load[]():") {
+			if !strings.Contains(err.Error(), "typedenv:") {
 				t.Errorf("got %q, want error containing \"TypedEnv.Load[]():\"", err.Error())
 			}
 		},

@@ -18,7 +18,7 @@ import (
 func Load[S any]() (S, error) {
 	s, err := decodeStruct[S](os.LookupEnv)
 	if err != nil {
-		return s, fmt.Errorf("TypedEnv.Load[](): %w", err)
+		return s, fmt.Errorf("typedenv: %w", err)
 	}
 
 	return s, nil
@@ -26,7 +26,7 @@ func Load[S any]() (S, error) {
 
 type source func(key string) (string, bool)
 
-func decodeStruct[S any](src source) (S, error) {
+func decodeStruct[S any](lookup source) (S, error) {
 	var s S
 	structVal := reflect.ValueOf(&s).Elem()
 	if structVal.Kind() != reflect.Struct {
@@ -36,7 +36,7 @@ func decodeStruct[S any](src source) (S, error) {
 	var errs []error
 	structType := structVal.Type()
 	for i := range structType.NumField() {
-		if err := decodeStructField(structType.Field(i), structVal.Field(i), src); err != nil {
+		if err := decodeStructField(structType.Field(i), structVal.Field(i), lookup); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -44,22 +44,22 @@ func decodeStruct[S any](src source) (S, error) {
 	return s, errors.Join(errs...)
 }
 
-func decodeStructField(t reflect.StructField, v reflect.Value, src source) error {
-	tag, tagged := t.Tag.Lookup("env")
+func decodeStructField(field reflect.StructField, val reflect.Value, lookup source) error {
+	tag, tagged := field.Tag.Lookup("env")
 	if !tagged {
 		return nil
 	}
 
-	if !t.IsExported() {
-		return fmt.Errorf("decodeStructField: can't decode into unexported field %v", t.Name)
+	if !field.IsExported() {
+		return fmt.Errorf("decodeStructField: can't decode into unexported field %v", field.Name)
 	}
 
-	raw, ok := src(tag)
+	raw, ok := lookup(tag)
 	if !ok {
 		return fmt.Errorf("decodeStructField: no environment value for key %v", tag)
 	}
 
-	if err := decodeField(raw, v); err != nil {
+	if err := decodeField(raw, val); err != nil {
 		return fmt.Errorf("%s: %w", tag, err)
 	}
 
