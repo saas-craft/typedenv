@@ -1,17 +1,26 @@
-# TypedEnv [![CI](https://github.com/saas-craft/typedenv/actions/workflows/ci.yml/badge.svg)](https://github.com/saas-craft/typedenv/actions/workflows/ci.yml) [![Go Report Card](https://goreportcard.com/badge/github.com/saas-craft/typedenv)](https://goreportcard.com/report/github.com/saas-craft/typedenv)
+# TypedEnv [![CI](https://github.com/saas-craft/typedenv/actions/workflows/ci.yml/badge.svg)](https://github.com/saas-craft/typedenv/actions/workflows/ci.yml) [![Go Report Card](https://goreportcard.com/badge/github.com/saas-craft/typedenv)](https://goreportcard.com/report/github.com/saas-craft/typedenv) [![Go Reference](https://pkg.go.dev/badge/github.com/saas-craft/typedenv.svg)](https://pkg.go.dev/github.com/saas-craft/typedenv)
 
-Strongly typed environment variable management for Go.
+Type-safe environment configuration for Go.
 
-Configure your requirements using a Go struct. TypedEnv validates required environment variables and returns explicit errors for missing or invalid values. .env files are intentionally unsupported to reduce accidental secret exposure, and to keep configuration sourcing explicit.
+```go
+type Config struct {
+    Host    string        `env:"HOST"`
+    Port    int           `env:"PORT"`
+    Timeout time.Duration `env:"TIMEOUT"`
+}
+
+cfg, err := typedenv.Load[Config]()
+```
+
+Unparseable and missing key values are returned in one error.
 
 ## Features
 
-- Errors for missing environment variables
-- Errors for type mismatches and parsing failures
-- No variable values in errors or logs
-- No iteration of OS variables; look only at what's necessary
-- No unsafe usage
+- Looks up only the keys you declare
+- Keeps raw values out of errors
+- No use of the unsafe package
 - No panics
+- No .env support: promotes explicit sourcing
 
 ## Installation
 
@@ -61,6 +70,8 @@ func main() {
 | `float32`, `float64` | `3.14` |
 | `time.Duration` | `1h30m`, `500ms`, `2s` |
 | `url.URL` | `https://saascraft.com/v1` |
+
+Untagged fields are left at their zero value.
 
 ## License
 
