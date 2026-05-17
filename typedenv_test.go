@@ -225,7 +225,7 @@ func TestDecodeValue_Uint(t *testing.T) {
 				}
 			},
 		},
-		"uint value with invalid raw returns error":   {raw: "-1", wantErr: ErrParse, value: func() reflect.Value { var u uint; return reflect.ValueOf(&u).Elem() }},
+		"uint value with invalid raw returns error":    {raw: "-1", wantErr: ErrParse, value: func() reflect.Value { var u uint; return reflect.ValueOf(&u).Elem() }},
 		"uint8 value with overflow raw returns error":  {raw: "256", wantErr: ErrParse, value: func() reflect.Value { var u uint8; return reflect.ValueOf(&u).Elem() }},
 		"uint16 value with overflow raw returns error": {raw: "65536", wantErr: ErrParse, value: func() reflect.Value { var u uint16; return reflect.ValueOf(&u).Elem() }},
 		"uint32 value with overflow raw returns error": {raw: "4294967296", wantErr: ErrParse, value: func() reflect.Value { var u uint32; return reflect.ValueOf(&u).Elem() }},
