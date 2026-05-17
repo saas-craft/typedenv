@@ -1,4 +1,4 @@
-// Package typedenv is a strongly typed environment variable manager.
+// Package typedenv decodes OS environment variables into a struct
 package typedenv
 
 import (
@@ -11,10 +11,17 @@ import (
 	"time"
 )
 
-// Load returns a new instance of the given struct, or an error. It fills
-// public fields with operating system environment variable values. The struct
-// fields must be tagged with `env`, which specifies the environment variable
-// key value to use eg. `env:"APP_ENV"`.
+// Load reads operating system environment variables into a new instance of S,
+// which must be a struct. Exported fields tagged with `env:"KEY"` are populated
+// by looking up KEY in the environment; untagged fields are left at their zero
+// value.
+//
+// Supported field types: string, bool, the int and uint families, the float
+// family, time.Duration, and url.URL.
+//
+// Load returns an error if a tagged variable is missing from the environment,
+// fails to parse, or targets an unexported field. Errors from multiple fields
+// are joined.
 func Load[S any]() (S, error) {
 	s, err := decodeStruct[S](os.LookupEnv)
 	if err != nil {
