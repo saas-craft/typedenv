@@ -11,6 +11,14 @@ import (
 	"time"
 )
 
+var (
+	ErrNotStruct       = errors.New("expected struct")
+	ErrUnexportedField = errors.New("unexported field")
+	ErrNotFound        = errors.New("variable not found for key")
+	ErrParse           = errors.New("invalid value")
+	ErrUnsupportedType = errors.New("unsupported type")
+)
+
 // Load reads operating system environment variables into a new instance of S,
 // which must be a struct. Exported fields tagged with `env:"KEY"` are populated
 // by looking up KEY in the environment; untagged fields are left at their zero
@@ -37,7 +45,7 @@ func decodeStruct[S any](lookup source) (S, error) {
 	var s S
 	structVal := reflect.ValueOf(&s).Elem()
 	if structVal.Kind() != reflect.Struct {
-		return s, fmt.Errorf("decode: expected struct, got %v", structVal.Kind())
+		return s, fmt.Errorf("%w: got %v", ErrNotStruct, structVal.Kind())
 	}
 
 	var errs []error
@@ -58,16 +66,16 @@ func decodeStructField(field reflect.StructField, val reflect.Value, lookup sour
 	}
 
 	if !field.IsExported() {
-		return fmt.Errorf("decodeStructField: can't decode into unexported field %v", field.Name)
+		return fmt.Errorf("%q: %w", field.Name, ErrUnexportedField)
 	}
 
 	raw, ok := lookup(tag)
 	if !ok {
-		return fmt.Errorf("decodeStructField: no environment value for key %v", tag)
+		return fmt.Errorf("%q: %w", tag, ErrNotFound)
 	}
 
 	if err := decodeValue(raw, val); err != nil {
-		return fmt.Errorf("%s: %w", tag, err)
+		return fmt.Errorf("%q: %w", tag, err)
 	}
 
 	return nil
@@ -77,19 +85,19 @@ func decodeValue(raw string, dest reflect.Value) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			// This is why the return error is named
-			err = fmt.Errorf("decodeField: recovered from panic %v", r)
+			err = fmt.Errorf("internal panic: %v", r)
 		}
 	}()
 
 	if !dest.CanSet() {
-		return fmt.Errorf("decodeField: field %v not settable", dest.Kind())
+		return errors.New("field not settable")
 	}
 
 	switch dest.Type() {
 	case reflect.TypeFor[time.Duration]():
 		d, err := time.ParseDuration(raw)
 		if err != nil {
-			return fmt.Errorf("decodeField: invalid %v", dest.Type())
+			return fmt.Errorf("%w: invalid duration", ErrParse)
 		}
 
 		dest.SetInt(int64(d))
@@ -99,7 +107,7 @@ func decodeValue(raw string, dest reflect.Value) (err error) {
 	case reflect.TypeFor[url.URL]():
 		u, err := url.Parse(raw)
 		if err != nil {
-			return fmt.Errorf("decodeField: invalid %v", dest.Type())
+			return fmt.Errorf("%w: invalid url", ErrParse)
 		}
 
 		dest.Set(reflect.ValueOf(*u))
@@ -116,7 +124,7 @@ func decodeValue(raw string, dest reflect.Value) (err error) {
 	case reflect.Bool:
 		b, err := strconv.ParseBool(raw)
 		if err != nil {
-			return fmt.Errorf("decodeField: invalid %v: %w", dest.Type(), errors.Unwrap(err))
+			return fmt.Errorf("%w: invalid bool", ErrParse)
 		}
 
 		dest.SetBool(b)
@@ -125,8 +133,11 @@ func decodeValue(raw string, dest reflect.Value) (err error) {
 
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		i, err := strconv.ParseInt(raw, 10, dest.Type().Bits())
+		if errors.Is(err, strconv.ErrRange) {
+			return fmt.Errorf("%w: %v out of range", ErrParse, dest.Type())
+		}
 		if err != nil {
-			return fmt.Errorf("decodeField: invalid %v: %w", dest.Type(), errors.Unwrap(err))
+			return fmt.Errorf("%w: invalid %v", ErrParse, dest.Type())
 		}
 
 		dest.SetInt(i)
@@ -135,8 +146,11 @@ func decodeValue(raw string, dest reflect.Value) (err error) {
 
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		u, err := strconv.ParseUint(raw, 10, dest.Type().Bits())
+		if errors.Is(err, strconv.ErrRange) {
+			return fmt.Errorf("%w: %v out of range", ErrParse, dest.Type())
+		}
 		if err != nil {
-			return fmt.Errorf("decodeField: invalid %v: %w", dest.Type(), errors.Unwrap(err))
+			return fmt.Errorf("%w: invalid %v", ErrParse, dest.Type())
 		}
 
 		dest.SetUint(u)
@@ -145,8 +159,11 @@ func decodeValue(raw string, dest reflect.Value) (err error) {
 
 	case reflect.Float32, reflect.Float64:
 		f, err := strconv.ParseFloat(raw, dest.Type().Bits())
+		if errors.Is(err, strconv.ErrRange) {
+			return fmt.Errorf("%w: %v out of range", ErrParse, dest.Type())
+		}
 		if err != nil {
-			return fmt.Errorf("decodeField: invalid %v: %w", dest.Type(), errors.Unwrap(err))
+			return fmt.Errorf("%w: invalid %v", ErrParse, dest.Type())
 		}
 
 		dest.SetFloat(f)
@@ -154,5 +171,5 @@ func decodeValue(raw string, dest reflect.Value) (err error) {
 		return nil
 	}
 
-	return fmt.Errorf("decodeField: unsupported type %v", dest.Type())
+	return fmt.Errorf("%w: %v", ErrUnsupportedType, dest.Type())
 }
