@@ -75,4 +75,4 @@ Untagged fields are left at their zero value.
 
 ## License
 
-SaaS Craft TypedEnv is licensed under the MIT License - see [LICENSE](LICENSE) for details.
+SaasCraft TypedEnv is licensed under the MIT License - see [LICENSE](LICENSE) for details.
