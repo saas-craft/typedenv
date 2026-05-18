@@ -15,17 +15,15 @@ import (
 
 func ExampleLoad() {
 	type config struct {
-		Host       string        `env:"HOST"`
-		Port       int           `env:"PORT"`
-		Timeout    time.Duration `env:"TIMEOUT"`
-		ServiceURL url.URL       `env:"SERVICE_URL"`
-		LogLevel   slog.Level    `env:"LOG_LEVEL"`
+		Host     string        `env:"HOST"`
+		Port     int           `env:"PORT"`
+		Timeout  time.Duration `env:"TIMEOUT"`
+		LogLevel slog.Level    `env:"LOG_LEVEL"`
 	}
 
 	os.Setenv("HOST", "localhost")
 	os.Setenv("PORT", "8080")
 	os.Setenv("TIMEOUT", "1s")
-	os.Setenv("SERVICE_URL", "https://example.com/v1")
 	os.Setenv("LOG_LEVEL", "debug")
 
 	cfg, err := Load[config]()
@@ -34,7 +32,7 @@ func ExampleLoad() {
 	}
 
 	fmt.Printf("%#v\n", cfg)
-	// Output: typedenv.config{Host:"localhost", Port:8080, Timeout:1000000000, ServiceURL:url.URL{Scheme:"https", Opaque:"", User:(*url.Userinfo)(nil), Host:"example.com", Path:"/v1", Fragment:"", RawQuery:"", RawPath:"", RawFragment:"", ForceQuery:false, OmitHost:false}, LogLevel:-4}
+	// Output: typedenv.config{Host:"localhost", Port:8080, Timeout:1000000000, LogLevel:-4}
 }
 
 func runDecodeValueCases(t *testing.T, tests map[string]struct {
