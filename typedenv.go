@@ -93,8 +93,7 @@ func decodeValue(raw string, dest reflect.Value) (err error) {
 		return errors.New("field not settable")
 	}
 
-	switch dest.Type() {
-	case reflect.TypeFor[time.Duration]():
+	if dest.Type() == reflect.TypeFor[time.Duration]() {
 		d, err := time.ParseDuration(raw)
 		if err != nil {
 			return fmt.Errorf("%w: invalid duration", ErrParse)
@@ -103,14 +102,15 @@ func decodeValue(raw string, dest reflect.Value) (err error) {
 		dest.SetInt(int64(d))
 
 		return nil
+	}
 
-	case reflect.TypeFor[url.URL]():
+	if dest.Kind() == reflect.Struct && dest.Type().ConvertibleTo(reflect.TypeFor[url.URL]()) {
 		u, err := url.Parse(raw)
 		if err != nil {
 			return fmt.Errorf("%w: invalid url", ErrParse)
 		}
 
-		dest.Set(reflect.ValueOf(*u))
+		dest.Set(reflect.ValueOf(*u).Convert(dest.Type()))
 
 		return nil
 	}

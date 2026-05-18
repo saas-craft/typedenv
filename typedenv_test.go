@@ -327,6 +327,39 @@ func TestDecodeValue_URL(t *testing.T) {
 	})
 }
 
+
+func TestDecodeValue_NamedURLType(t *testing.T) {
+	type Endpoint url.URL
+	runDecodeValueCases(t, map[string]struct {
+		raw        string
+		value      func() reflect.Value
+		wantErr    error
+		wantErrMsg string
+		check      func(t *testing.T, val reflect.Value)
+	}{
+		"named type based on url.URL is decoded from valid url": {
+			raw:   "https://example.com/path?q=1",
+			value: func() reflect.Value { var u Endpoint; return reflect.ValueOf(&u).Elem() },
+			check: func(t *testing.T, val reflect.Value) {
+				if got := val.FieldByName("Scheme").String(); got != "https" {
+					t.Errorf("got scheme %q, want %q", got, "https")
+				}
+				if got := val.FieldByName("Host").String(); got != "example.com" {
+					t.Errorf("got host %q, want %q", got, "example.com")
+				}
+				if got := val.FieldByName("Path").String(); got != "/path" {
+					t.Errorf("got path %q, want %q", got, "/path")
+				}
+			},
+		},
+		"named type based on url.URL with invalid raw returns error": {
+			raw:     "://no-scheme",
+			wantErr: ErrParse,
+			value:   func() reflect.Value { var u Endpoint; return reflect.ValueOf(&u).Elem() },
+		},
+	})
+}
+
 func TestDecodeValue_ErrorsOmitRawValue(t *testing.T) {
 	const secret = "s3cr3t-v@lue"
 

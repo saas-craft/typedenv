@@ -20,7 +20,7 @@ Unparseable and missing key values are returned in one error.
 - Keeps raw values out of errors
 - No use of the unsafe package
 - No panics
-- No .env support: promotes explicit sourcing
+- No .env support promotes explicit sourcing
 
 ## Installation
 
@@ -72,6 +72,10 @@ func main() {
 | `url.URL` | `https://saascraft.com/v1` |
 
 Untagged fields are left at their zero value.
+
+## Constraints
+
+- No support for named time.Duration wrapper types, which can't be distinguished from integers
 
 ## License
 
