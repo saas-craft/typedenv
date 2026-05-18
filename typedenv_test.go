@@ -33,8 +33,8 @@ func ExampleLoad() {
 		log.Fatalf("load config: %v", err)
 	}
 
-	fmt.Println(cfg)
-	// Output: {localhost 8080 1s {https   example.com /v1     false false} DEBUG}
+	fmt.Printf("%#v\n", cfg)
+	// Output: typedenv.config{Host:"localhost", Port:8080, Timeout:1000000000, ServiceURL:url.URL{Scheme:"https", Opaque:"", User:(*url.Userinfo)(nil), Host:"example.com", Path:"/v1", Fragment:"", RawQuery:"", RawPath:"", RawFragment:"", ForceQuery:false, OmitHost:false}, LogLevel:-4}
 }
 
 func runDecodeValueCases(t *testing.T, tests map[string]struct {
