@@ -4,9 +4,10 @@ Type-safe environment configuration for Go.
 
 ```go
 type Config struct {
-    Host    string        `env:"HOST"`
-    Port    int           `env:"PORT"`
-    Timeout time.Duration `env:"TIMEOUT"`
+    Host     string        `env:"HOST"`
+    Port     int           `env:"PORT"`
+    Timeout  time.Duration `env:"TIMEOUT"`
+    LogLevel slog.Level    `env:"LOG_LEVEL"`
 }
 
 cfg, err := typedenv.Load[Config]()
@@ -48,6 +49,7 @@ func main() {
         AppPort    int           `env:"PORT"`
         Timeout    time.Duration `env:"TIMEOUT"`
         ServiceURL url.URL       `env:"SERVICE_URL"`
+        LogLevel   slog.Level    `env:"LOG_LEVEL"`
     }
 
     cfg, err := typedenv.Load[config]()
@@ -70,6 +72,7 @@ func main() {
 | `float32`, `float64` | `3.14` |
 | `time.Duration` | `1h30m`, `500ms`, `2s` |
 | `url.URL` | `https://saascraft.com/v1` |
+| `encoding.TextUnmarshaler` (e.g. `slog.Level`) | `debug` |
 
 Untagged fields are left at their zero value.
 

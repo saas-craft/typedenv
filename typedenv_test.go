@@ -2,12 +2,40 @@ package typedenv
 
 import (
 	"errors"
+	"fmt"
+	"log"
+	"log/slog"
 	"net/url"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
 )
+
+func ExampleLoad() {
+	type config struct {
+		Host       string        `env:"HOST"`
+		Port       int           `env:"PORT"`
+		Timeout    time.Duration `env:"TIMEOUT"`
+		ServiceURL url.URL       `env:"SERVICE_URL"`
+		LogLevel   slog.Level    `env:"LOG_LEVEL"`
+	}
+
+	os.Setenv("HOST", "localhost")
+	os.Setenv("PORT", "8080")
+	os.Setenv("TIMEOUT", "1s")
+	os.Setenv("SERVICE_URL", "https://example.com/v1")
+	os.Setenv("LOG_LEVEL", "debug")
+
+	cfg, err := Load[config]()
+	if err != nil {
+		log.Fatalf("load config: %v", err)
+	}
+
+	fmt.Println(cfg)
+	// Output: {localhost 8080 1s {https   example.com /v1     false false} DEBUG}
+}
 
 func runDecodeValueCases(t *testing.T, tests map[string]struct {
 	raw        string
@@ -359,6 +387,48 @@ func TestDecodeValue_NamedURLType(t *testing.T) {
 	})
 }
 
+type customText struct {
+	val string
+}
+
+func (c *customText) UnmarshalText(b []byte) error {
+	c.val = string(b)
+
+	return nil
+}
+
+type failingText struct{}
+
+func (f *failingText) UnmarshalText(b []byte) error {
+	return errors.New("unmarshal error: " + string(b))
+}
+
+func TestDecodeValue_TextUnmarshaler(t *testing.T) {
+	runDecodeValueCases(t, map[string]struct {
+		raw        string
+		value      func() reflect.Value
+		wantErr    error
+		wantErrMsg string
+		check      func(t *testing.T, val reflect.Value)
+	}{
+		"text unmarshaler is called with raw value": {
+			raw:   "hello",
+			value: func() reflect.Value { var c customText; return reflect.ValueOf(&c).Elem() },
+			check: func(t *testing.T, val reflect.Value) {
+				got := val.FieldByName("val").String()
+				if got != "hello" {
+					t.Errorf("got %q, want %q", got, "hello")
+				}
+			},
+		},
+		"text unmarshaler error returns ErrParse": {
+			raw:     "bad",
+			value:   func() reflect.Value { var f failingText; return reflect.ValueOf(&f).Elem() },
+			wantErr: ErrParse,
+		},
+	})
+}
+
 func TestDecodeValue_ErrorsOmitRawValue(t *testing.T) {
 	const secret = "s3cr3t-v@lue"
 
@@ -381,6 +451,17 @@ func TestDecodeValue_ErrorsOmitRawValue(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("TextUnmarshaler", func(t *testing.T) {
+		var f failingText
+		err := decodeValue(secret, reflect.ValueOf(&f).Elem())
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		if strings.Contains(err.Error(), secret) {
+			t.Errorf("error exposes raw value: %v", err)
+		}
+	})
 
 	// url.Parse accepts almost any string as a relative URL, so we prefix with
 	// "://" to force a parse failure while still embedding the secret in the raw value.

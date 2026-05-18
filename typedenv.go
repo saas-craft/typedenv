@@ -2,6 +2,7 @@
 package typedenv
 
 import (
+	"encoding"
 	"errors"
 	"fmt"
 	"net/url"
@@ -91,6 +92,16 @@ func decodeValue(raw string, dest reflect.Value) (err error) {
 
 	if !dest.CanSet() {
 		return errors.New("field not settable")
+	}
+
+	if dest.CanAddr() {
+		if u, ok := dest.Addr().Interface().(encoding.TextUnmarshaler); ok {
+			if err := u.UnmarshalText([]byte(raw)); err != nil {
+				return fmt.Errorf("%w: text unmarshaling failed", ErrParse)
+			}
+
+			return nil
+		}
 	}
 
 	if dest.Type() == reflect.TypeFor[time.Duration]() {
