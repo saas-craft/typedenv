@@ -327,7 +327,6 @@ func TestDecodeValue_URL(t *testing.T) {
 	})
 }
 
-
 func TestDecodeValue_NamedURLType(t *testing.T) {
 	type Endpoint url.URL
 	runDecodeValueCases(t, map[string]struct {
