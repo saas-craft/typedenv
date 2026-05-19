@@ -45,19 +45,24 @@ import (
 
 func main() {
     type config struct {
-        AppHost    string        `env:"HOST"`
-        AppPort    int           `env:"PORT"`
-        Timeout    time.Duration `env:"TIMEOUT"`
-        ServiceURL url.URL       `env:"SERVICE_URL"`
-        LogLevel   slog.Level    `env:"LOG_LEVEL"`
+        Host     string        `env:"HOST"`
+        Port     int           `env:"PORT"`
+        Timeout  time.Duration `env:"TIMEOUT"`
+        LogLevel slog.Level    `env:"LOG_LEVEL"`
     }
 
-    cfg, err := typedenv.Load[config]()
+    os.Setenv("HOST", "localhost")
+    os.Setenv("PORT", "8080")
+    os.Setenv("TIMEOUT", "1s")
+    os.Setenv("LOG_LEVEL", "debug")
+
+    cfg, err := Load[config]()
     if err != nil {
         log.Fatalf("load config: %v", err)
     }
 
-    fmt.Println(cfg)
+    fmt.Printf("%#v\n", cfg)
+    // Output: typedenv.config{Host:"localhost", Port:8080, Timeout:1000000000, LogLevel:-4}
 }
 ```
 
@@ -75,6 +80,10 @@ func main() {
 | `encoding.TextUnmarshaler` (e.g. `slog.Level`) | `debug` |
 
 Untagged fields are left at their zero value.
+
+## Works Well With
+
+- SaasCraft [Secret](https://pkg.go.dev/github.com/saas-craft/secret), a generic wrapper that hides values from default formatting, logging, and serialization
 
 ## Constraints
 

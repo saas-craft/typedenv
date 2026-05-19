@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-func ExampleLoad() {
+func Example() {
 	type config struct {
 		Host     string        `env:"HOST"`
 		Port     int           `env:"PORT"`
