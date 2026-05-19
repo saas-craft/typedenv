@@ -35,14 +35,20 @@ func Example() {
 	// Output: typedenv.config{Host:"localhost", Port:8080, Timeout:1000000000, LogLevel:-4}
 }
 
-func runDecodeValueCases(t *testing.T, tests map[string]struct {
+type decodeCase struct {
 	raw        string
 	value      func() reflect.Value
 	wantErr    error
 	wantErrMsg string
 	check      func(t *testing.T, val reflect.Value)
-},
-) {
+}
+
+func ptrVal[T any]() reflect.Value {
+	var v T
+	return reflect.ValueOf(&v).Elem()
+}
+
+func runDecodeValueCases(t *testing.T, tests map[string]decodeCase) {
 	t.Helper()
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
@@ -68,13 +74,7 @@ func runDecodeValueCases(t *testing.T, tests map[string]struct {
 }
 
 func TestDecodeValue(t *testing.T) {
-	runDecodeValueCases(t, map[string]struct {
-		raw        string
-		value      func() reflect.Value
-		wantErr    error
-		wantErrMsg string
-		check      func(t *testing.T, val reflect.Value)
-	}{
+	runDecodeValueCases(t, map[string]decodeCase{
 		"non-settable value returns error": {
 			raw:        "value",
 			value:      func() reflect.Value { return reflect.ValueOf("immutable") },
@@ -82,23 +82,17 @@ func TestDecodeValue(t *testing.T) {
 		},
 		"unsupported type returns error": {
 			raw:     "value",
-			value:   func() reflect.Value { var c complex64; return reflect.ValueOf(&c).Elem() },
+			value:   ptrVal[complex64],
 			wantErr: ErrUnsupportedType,
 		},
 	})
 }
 
 func TestDecodeValue_String(t *testing.T) {
-	runDecodeValueCases(t, map[string]struct {
-		raw        string
-		value      func() reflect.Value
-		wantErr    error
-		wantErrMsg string
-		check      func(t *testing.T, val reflect.Value)
-	}{
+	runDecodeValueCases(t, map[string]decodeCase{
 		"string value is set from raw": {
 			raw:   "hello",
-			value: func() reflect.Value { var s string; return reflect.ValueOf(&s).Elem() },
+			value: ptrVal[string],
 			check: func(t *testing.T, val reflect.Value) {
 				if got := val.String(); got != "hello" {
 					t.Errorf("got %q, want %q", got, "hello")
@@ -109,16 +103,10 @@ func TestDecodeValue_String(t *testing.T) {
 }
 
 func TestDecodeValue_Bool(t *testing.T) {
-	runDecodeValueCases(t, map[string]struct {
-		raw        string
-		value      func() reflect.Value
-		wantErr    error
-		wantErrMsg string
-		check      func(t *testing.T, val reflect.Value)
-	}{
+	runDecodeValueCases(t, map[string]decodeCase{
 		"bool value is set from valid raw": {
 			raw:   "true",
-			value: func() reflect.Value { var b bool; return reflect.ValueOf(&b).Elem() },
+			value: ptrVal[bool],
 			check: func(t *testing.T, val reflect.Value) {
 				if !val.Bool() {
 					t.Error("got false, want true")
@@ -128,22 +116,16 @@ func TestDecodeValue_Bool(t *testing.T) {
 		"bool value with invalid raw returns error": {
 			raw:     "notabool",
 			wantErr: ErrParse,
-			value:   func() reflect.Value { var b bool; return reflect.ValueOf(&b).Elem() },
+			value:   ptrVal[bool],
 		},
 	})
 }
 
 func TestDecodeValue_Int(t *testing.T) {
-	runDecodeValueCases(t, map[string]struct {
-		raw        string
-		value      func() reflect.Value
-		wantErr    error
-		wantErrMsg string
-		check      func(t *testing.T, val reflect.Value)
-	}{
+	runDecodeValueCases(t, map[string]decodeCase{
 		"int value is set from raw": {
 			raw:   "10",
-			value: func() reflect.Value { var i int; return reflect.ValueOf(&i).Elem() },
+			value: ptrVal[int],
 			check: func(t *testing.T, val reflect.Value) {
 				if got := val.Int(); got != 10 {
 					t.Errorf("got %d, want 10", got)
@@ -152,7 +134,7 @@ func TestDecodeValue_Int(t *testing.T) {
 		},
 		"int8 value is set from raw": {
 			raw:   "8",
-			value: func() reflect.Value { var i int8; return reflect.ValueOf(&i).Elem() },
+			value: ptrVal[int8],
 			check: func(t *testing.T, val reflect.Value) {
 				if got := val.Int(); got != 8 {
 					t.Errorf("got %d, want 8", got)
@@ -161,7 +143,7 @@ func TestDecodeValue_Int(t *testing.T) {
 		},
 		"int16 value is set from raw": {
 			raw:   "16",
-			value: func() reflect.Value { var i int16; return reflect.ValueOf(&i).Elem() },
+			value: ptrVal[int16],
 			check: func(t *testing.T, val reflect.Value) {
 				if got := val.Int(); got != 16 {
 					t.Errorf("got %d, want 16", got)
@@ -170,7 +152,7 @@ func TestDecodeValue_Int(t *testing.T) {
 		},
 		"int32 value is set from raw": {
 			raw:   "32",
-			value: func() reflect.Value { var i int32; return reflect.ValueOf(&i).Elem() },
+			value: ptrVal[int32],
 			check: func(t *testing.T, val reflect.Value) {
 				if got := val.Int(); got != 32 {
 					t.Errorf("got %d, want 32", got)
@@ -179,36 +161,30 @@ func TestDecodeValue_Int(t *testing.T) {
 		},
 		"int64 value is set from raw": {
 			raw:   "64",
-			value: func() reflect.Value { var i int64; return reflect.ValueOf(&i).Elem() },
+			value: ptrVal[int64],
 			check: func(t *testing.T, val reflect.Value) {
 				if got := val.Int(); got != 64 {
 					t.Errorf("got %d, want 64", got)
 				}
 			},
 		},
-		"int value with invalid raw returns error":     {raw: "notanumber", wantErr: ErrParse, value: func() reflect.Value { var i int; return reflect.ValueOf(&i).Elem() }},
-		"int8 value with overflow raw returns error":   {raw: "128", wantErr: ErrParse, value: func() reflect.Value { var i int8; return reflect.ValueOf(&i).Elem() }},
-		"int8 value with underflow raw returns error":  {raw: "-129", wantErr: ErrParse, value: func() reflect.Value { var i int8; return reflect.ValueOf(&i).Elem() }},
-		"int16 value with overflow raw returns error":  {raw: "32768", wantErr: ErrParse, value: func() reflect.Value { var i int16; return reflect.ValueOf(&i).Elem() }},
-		"int16 value with underflow raw returns error": {raw: "-32769", wantErr: ErrParse, value: func() reflect.Value { var i int16; return reflect.ValueOf(&i).Elem() }},
-		"int32 value with overflow raw returns error":  {raw: "2147483648", wantErr: ErrParse, value: func() reflect.Value { var i int32; return reflect.ValueOf(&i).Elem() }},
-		"int32 value with underflow raw returns error": {raw: "-2147483649", wantErr: ErrParse, value: func() reflect.Value { var i int32; return reflect.ValueOf(&i).Elem() }},
-		"int64 value with overflow raw returns error":  {raw: "9223372036854775808", wantErr: ErrParse, value: func() reflect.Value { var i int64; return reflect.ValueOf(&i).Elem() }},
-		"int64 value with underflow raw returns error": {raw: "-9223372036854775809", wantErr: ErrParse, value: func() reflect.Value { var i int64; return reflect.ValueOf(&i).Elem() }},
+		"int value with invalid raw returns error":     {raw: "notanumber", wantErr: ErrParse, value: ptrVal[int]},
+		"int8 value with overflow raw returns error":   {raw: "128", wantErr: ErrParse, value: ptrVal[int8]},
+		"int8 value with underflow raw returns error":  {raw: "-129", wantErr: ErrParse, value: ptrVal[int8]},
+		"int16 value with overflow raw returns error":  {raw: "32768", wantErr: ErrParse, value: ptrVal[int16]},
+		"int16 value with underflow raw returns error": {raw: "-32769", wantErr: ErrParse, value: ptrVal[int16]},
+		"int32 value with overflow raw returns error":  {raw: "2147483648", wantErr: ErrParse, value: ptrVal[int32]},
+		"int32 value with underflow raw returns error": {raw: "-2147483649", wantErr: ErrParse, value: ptrVal[int32]},
+		"int64 value with overflow raw returns error":  {raw: "9223372036854775808", wantErr: ErrParse, value: ptrVal[int64]},
+		"int64 value with underflow raw returns error": {raw: "-9223372036854775809", wantErr: ErrParse, value: ptrVal[int64]},
 	})
 }
 
 func TestDecodeValue_Uint(t *testing.T) {
-	runDecodeValueCases(t, map[string]struct {
-		raw        string
-		value      func() reflect.Value
-		wantErr    error
-		wantErrMsg string
-		check      func(t *testing.T, val reflect.Value)
-	}{
+	runDecodeValueCases(t, map[string]decodeCase{
 		"uint value is set from raw": {
 			raw:   "10",
-			value: func() reflect.Value { var u uint; return reflect.ValueOf(&u).Elem() },
+			value: ptrVal[uint],
 			check: func(t *testing.T, val reflect.Value) {
 				if got := val.Uint(); got != 10 {
 					t.Errorf("got %d, want 10", got)
@@ -217,7 +193,7 @@ func TestDecodeValue_Uint(t *testing.T) {
 		},
 		"uint8 value is set from raw": {
 			raw:   "8",
-			value: func() reflect.Value { var u uint8; return reflect.ValueOf(&u).Elem() },
+			value: ptrVal[uint8],
 			check: func(t *testing.T, val reflect.Value) {
 				if got := val.Uint(); got != 8 {
 					t.Errorf("got %d, want 8", got)
@@ -226,7 +202,7 @@ func TestDecodeValue_Uint(t *testing.T) {
 		},
 		"uint16 value is set from raw": {
 			raw:   "16",
-			value: func() reflect.Value { var u uint16; return reflect.ValueOf(&u).Elem() },
+			value: ptrVal[uint16],
 			check: func(t *testing.T, val reflect.Value) {
 				if got := val.Uint(); got != 16 {
 					t.Errorf("got %d, want 16", got)
@@ -235,7 +211,7 @@ func TestDecodeValue_Uint(t *testing.T) {
 		},
 		"uint32 value is set from raw": {
 			raw:   "32",
-			value: func() reflect.Value { var u uint32; return reflect.ValueOf(&u).Elem() },
+			value: ptrVal[uint32],
 			check: func(t *testing.T, val reflect.Value) {
 				if got := val.Uint(); got != 32 {
 					t.Errorf("got %d, want 32", got)
@@ -244,32 +220,26 @@ func TestDecodeValue_Uint(t *testing.T) {
 		},
 		"uint64 value is set from raw": {
 			raw:   "64",
-			value: func() reflect.Value { var u uint64; return reflect.ValueOf(&u).Elem() },
+			value: ptrVal[uint64],
 			check: func(t *testing.T, val reflect.Value) {
 				if got := val.Uint(); got != 64 {
 					t.Errorf("got %d, want 64", got)
 				}
 			},
 		},
-		"uint value with invalid raw returns error":    {raw: "-1", wantErr: ErrParse, value: func() reflect.Value { var u uint; return reflect.ValueOf(&u).Elem() }},
-		"uint8 value with overflow raw returns error":  {raw: "256", wantErr: ErrParse, value: func() reflect.Value { var u uint8; return reflect.ValueOf(&u).Elem() }},
-		"uint16 value with overflow raw returns error": {raw: "65536", wantErr: ErrParse, value: func() reflect.Value { var u uint16; return reflect.ValueOf(&u).Elem() }},
-		"uint32 value with overflow raw returns error": {raw: "4294967296", wantErr: ErrParse, value: func() reflect.Value { var u uint32; return reflect.ValueOf(&u).Elem() }},
-		"uint64 value with overflow raw returns error": {raw: "18446744073709551616", wantErr: ErrParse, value: func() reflect.Value { var u uint64; return reflect.ValueOf(&u).Elem() }},
+		"uint value with invalid raw returns error":    {raw: "-1", wantErr: ErrParse, value: ptrVal[uint]},
+		"uint8 value with overflow raw returns error":  {raw: "256", wantErr: ErrParse, value: ptrVal[uint8]},
+		"uint16 value with overflow raw returns error": {raw: "65536", wantErr: ErrParse, value: ptrVal[uint16]},
+		"uint32 value with overflow raw returns error": {raw: "4294967296", wantErr: ErrParse, value: ptrVal[uint32]},
+		"uint64 value with overflow raw returns error": {raw: "18446744073709551616", wantErr: ErrParse, value: ptrVal[uint64]},
 	})
 }
 
 func TestDecodeValue_Float(t *testing.T) {
-	runDecodeValueCases(t, map[string]struct {
-		raw        string
-		value      func() reflect.Value
-		wantErr    error
-		wantErrMsg string
-		check      func(t *testing.T, val reflect.Value)
-	}{
+	runDecodeValueCases(t, map[string]decodeCase{
 		"float32 value is set from raw": {
 			raw:   "1.5",
-			value: func() reflect.Value { var f float32; return reflect.ValueOf(&f).Elem() },
+			value: ptrVal[float32],
 			check: func(t *testing.T, val reflect.Value) {
 				if got := val.Float(); got != 1.5 {
 					t.Errorf("got %v, want 1.5", got)
@@ -278,30 +248,24 @@ func TestDecodeValue_Float(t *testing.T) {
 		},
 		"float64 value is set from raw": {
 			raw:   "1.5",
-			value: func() reflect.Value { var f float64; return reflect.ValueOf(&f).Elem() },
+			value: ptrVal[float64],
 			check: func(t *testing.T, val reflect.Value) {
 				if got := val.Float(); got != 1.5 {
 					t.Errorf("got %v, want 1.5", got)
 				}
 			},
 		},
-		"float value with invalid raw returns error":    {raw: "notanumber", wantErr: ErrParse, value: func() reflect.Value { var f float64; return reflect.ValueOf(&f).Elem() }},
-		"float32 value with overflow raw returns error": {raw: "3.5e38", wantErr: ErrParse, value: func() reflect.Value { var f float32; return reflect.ValueOf(&f).Elem() }},
-		"float64 value with overflow raw returns error": {raw: "1e309", wantErr: ErrParse, value: func() reflect.Value { var f float64; return reflect.ValueOf(&f).Elem() }},
+		"float value with invalid raw returns error":    {raw: "notanumber", wantErr: ErrParse, value: ptrVal[float64]},
+		"float32 value with overflow raw returns error": {raw: "3.5e38", wantErr: ErrParse, value: ptrVal[float32]},
+		"float64 value with overflow raw returns error": {raw: "1e309", wantErr: ErrParse, value: ptrVal[float64]},
 	})
 }
 
 func TestDecodeValue_Duration(t *testing.T) {
-	runDecodeValueCases(t, map[string]struct {
-		raw        string
-		value      func() reflect.Value
-		wantErr    error
-		wantErrMsg string
-		check      func(t *testing.T, val reflect.Value)
-	}{
+	runDecodeValueCases(t, map[string]decodeCase{
 		"duration value is set from valid raw": {
 			raw:   "1h30m",
-			value: func() reflect.Value { var d time.Duration; return reflect.ValueOf(&d).Elem() },
+			value: ptrVal[time.Duration],
 			check: func(t *testing.T, val reflect.Value) {
 				if got := time.Duration(val.Int()); got != 90*time.Minute {
 					t.Errorf("got %v, want %v", got, 90*time.Minute)
@@ -311,27 +275,21 @@ func TestDecodeValue_Duration(t *testing.T) {
 		"duration value with invalid raw returns error": {
 			raw:     "notaduration",
 			wantErr: ErrParse,
-			value:   func() reflect.Value { var d time.Duration; return reflect.ValueOf(&d).Elem() },
+			value:   ptrVal[time.Duration],
 		},
 		"duration value with plain integer raw returns error": {
 			raw:     "42",
 			wantErr: ErrParse,
-			value:   func() reflect.Value { var d time.Duration; return reflect.ValueOf(&d).Elem() },
+			value:   ptrVal[time.Duration],
 		},
 	})
 }
 
 func TestDecodeValue_URL(t *testing.T) {
-	runDecodeValueCases(t, map[string]struct {
-		raw        string
-		value      func() reflect.Value
-		wantErr    error
-		wantErrMsg string
-		check      func(t *testing.T, val reflect.Value)
-	}{
+	runDecodeValueCases(t, map[string]decodeCase{
 		"url value is set from valid raw": {
 			raw:   "https://example.com/path?q=1",
-			value: func() reflect.Value { var u url.URL; return reflect.ValueOf(&u).Elem() },
+			value: ptrVal[url.URL],
 			check: func(t *testing.T, val reflect.Value) {
 				got := val.Interface().(url.URL)
 				if got.Scheme != "https" {
@@ -348,23 +306,17 @@ func TestDecodeValue_URL(t *testing.T) {
 		"url value with invalid raw returns error": {
 			raw:     "://no-scheme",
 			wantErr: ErrParse,
-			value:   func() reflect.Value { var u url.URL; return reflect.ValueOf(&u).Elem() },
+			value:   ptrVal[url.URL],
 		},
 	})
 }
 
 func TestDecodeValue_NamedURLType(t *testing.T) {
 	type Endpoint url.URL
-	runDecodeValueCases(t, map[string]struct {
-		raw        string
-		value      func() reflect.Value
-		wantErr    error
-		wantErrMsg string
-		check      func(t *testing.T, val reflect.Value)
-	}{
+	runDecodeValueCases(t, map[string]decodeCase{
 		"named type based on url.URL is decoded from valid url": {
 			raw:   "https://example.com/path?q=1",
-			value: func() reflect.Value { var u Endpoint; return reflect.ValueOf(&u).Elem() },
+			value: ptrVal[Endpoint],
 			check: func(t *testing.T, val reflect.Value) {
 				if got := val.FieldByName("Scheme").String(); got != "https" {
 					t.Errorf("got scheme %q, want %q", got, "https")
@@ -380,7 +332,7 @@ func TestDecodeValue_NamedURLType(t *testing.T) {
 		"named type based on url.URL with invalid raw returns error": {
 			raw:     "://no-scheme",
 			wantErr: ErrParse,
-			value:   func() reflect.Value { var u Endpoint; return reflect.ValueOf(&u).Elem() },
+			value:   ptrVal[Endpoint],
 		},
 	})
 }
@@ -402,16 +354,10 @@ func (f *failingText) UnmarshalText(b []byte) error {
 }
 
 func TestDecodeValue_TextUnmarshaler(t *testing.T) {
-	runDecodeValueCases(t, map[string]struct {
-		raw        string
-		value      func() reflect.Value
-		wantErr    error
-		wantErrMsg string
-		check      func(t *testing.T, val reflect.Value)
-	}{
+	runDecodeValueCases(t, map[string]decodeCase{
 		"text unmarshaler is called with raw value": {
 			raw:   "hello",
-			value: func() reflect.Value { var c customText; return reflect.ValueOf(&c).Elem() },
+			value: ptrVal[customText],
 			check: func(t *testing.T, val reflect.Value) {
 				got := val.FieldByName("val").String()
 				if got != "hello" {
@@ -421,23 +367,17 @@ func TestDecodeValue_TextUnmarshaler(t *testing.T) {
 		},
 		"text unmarshaler error returns ErrParse": {
 			raw:     "bad",
-			value:   func() reflect.Value { var f failingText; return reflect.ValueOf(&f).Elem() },
+			value:   ptrVal[failingText],
 			wantErr: ErrParse,
 		},
 	})
 }
 
 func TestDecodeValue_Pointer(t *testing.T) {
-	runDecodeValueCases(t, map[string]struct {
-		raw        string
-		value      func() reflect.Value
-		wantErr    error
-		wantErrMsg string
-		check      func(t *testing.T, val reflect.Value)
-	}{
+	runDecodeValueCases(t, map[string]decodeCase{
 		"pointer to string is allocated and set": {
 			raw:   "hello",
-			value: func() reflect.Value { var s *string; return reflect.ValueOf(&s).Elem() },
+			value: ptrVal[*string],
 			check: func(t *testing.T, val reflect.Value) {
 				if val.IsNil() {
 					t.Fatal("got nil pointer, want allocated")
@@ -449,7 +389,7 @@ func TestDecodeValue_Pointer(t *testing.T) {
 		},
 		"pointer to int is allocated and set": {
 			raw:   "42",
-			value: func() reflect.Value { var i *int; return reflect.ValueOf(&i).Elem() },
+			value: ptrVal[*int],
 			check: func(t *testing.T, val reflect.Value) {
 				if val.IsNil() {
 					t.Fatal("got nil pointer, want allocated")
@@ -461,7 +401,7 @@ func TestDecodeValue_Pointer(t *testing.T) {
 		},
 		"pointer to bool is allocated and set": {
 			raw:   "true",
-			value: func() reflect.Value { var b *bool; return reflect.ValueOf(&b).Elem() },
+			value: ptrVal[*bool],
 			check: func(t *testing.T, val reflect.Value) {
 				if val.IsNil() {
 					t.Fatal("got nil pointer, want allocated")
@@ -473,7 +413,7 @@ func TestDecodeValue_Pointer(t *testing.T) {
 		},
 		"pointer to float64 is allocated and set": {
 			raw:   "3.14",
-			value: func() reflect.Value { var f *float64; return reflect.ValueOf(&f).Elem() },
+			value: ptrVal[*float64],
 			check: func(t *testing.T, val reflect.Value) {
 				if val.IsNil() {
 					t.Fatal("got nil pointer, want allocated")
@@ -485,7 +425,7 @@ func TestDecodeValue_Pointer(t *testing.T) {
 		},
 		"pointer to time.Duration is allocated and set": {
 			raw:   "5s",
-			value: func() reflect.Value { var d *time.Duration; return reflect.ValueOf(&d).Elem() },
+			value: ptrVal[*time.Duration],
 			check: func(t *testing.T, val reflect.Value) {
 				if val.IsNil() {
 					t.Fatal("got nil pointer, want allocated")
@@ -497,7 +437,7 @@ func TestDecodeValue_Pointer(t *testing.T) {
 		},
 		"pointer to url.URL is allocated and set": {
 			raw:   "https://example.com",
-			value: func() reflect.Value { var u *url.URL; return reflect.ValueOf(&u).Elem() },
+			value: ptrVal[*url.URL],
 			check: func(t *testing.T, val reflect.Value) {
 				if val.IsNil() {
 					t.Fatal("got nil pointer, want allocated")
@@ -513,7 +453,7 @@ func TestDecodeValue_Pointer(t *testing.T) {
 		},
 		"pointer to TextUnmarshaler type is allocated and set": {
 			raw:   "hello",
-			value: func() reflect.Value { var c *customText; return reflect.ValueOf(&c).Elem() },
+			value: ptrVal[*customText],
 			check: func(t *testing.T, val reflect.Value) {
 				if val.IsNil() {
 					t.Fatal("got nil pointer, want allocated")
@@ -525,7 +465,7 @@ func TestDecodeValue_Pointer(t *testing.T) {
 		},
 		"pointer to bool with invalid value returns parse error": {
 			raw:     "notabool",
-			value:   func() reflect.Value { var b *bool; return reflect.ValueOf(&b).Elem() },
+			value:   ptrVal[*bool],
 			wantErr: ErrParse,
 		},
 		"non-nil pointer is overwritten with new allocation": {
@@ -551,11 +491,11 @@ func TestDecodeValue_ErrorsOmitRawValue(t *testing.T) {
 	const secret = "s3cr3t-v@lue"
 
 	tests := map[string]func() reflect.Value{
-		"bool":          func() reflect.Value { var b bool; return reflect.ValueOf(&b).Elem() },
-		"int":           func() reflect.Value { var i int; return reflect.ValueOf(&i).Elem() },
-		"uint":          func() reflect.Value { var u uint; return reflect.ValueOf(&u).Elem() },
-		"float64":       func() reflect.Value { var f float64; return reflect.ValueOf(&f).Elem() },
-		"time.Duration": func() reflect.Value { var d time.Duration; return reflect.ValueOf(&d).Elem() },
+		"bool":          ptrVal[bool],
+		"int":           ptrVal[int],
+		"uint":          ptrVal[uint],
+		"float64":       ptrVal[float64],
+		"time.Duration": ptrVal[time.Duration],
 	}
 
 	for name, valueFn := range tests {
