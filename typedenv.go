@@ -85,7 +85,6 @@ func decodeStructField(field reflect.StructField, val reflect.Value, lookup sour
 func decodeValue(raw string, dest reflect.Value) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			// This is why the return error is named
 			err = fmt.Errorf("internal panic: %v", r)
 		}
 	}()
@@ -126,7 +125,7 @@ func decodeValue(raw string, dest reflect.Value) (err error) {
 		return nil
 	}
 
-	if dest.Kind() == reflect.Struct && dest.Type().ConvertibleTo(reflect.TypeFor[url.URL]()) {
+	if dest.Type().ConvertibleTo(reflect.TypeFor[url.URL]()) {
 		u, err := url.Parse(raw)
 		if err != nil {
 			return fmt.Errorf("%w: invalid url", ErrParse)
@@ -155,11 +154,8 @@ func decodeValue(raw string, dest reflect.Value) (err error) {
 
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		i, err := strconv.ParseInt(raw, 10, dest.Type().Bits())
-		if errors.Is(err, strconv.ErrRange) {
-			return fmt.Errorf("%w: %v out of range", ErrParse, dest.Type())
-		}
 		if err != nil {
-			return fmt.Errorf("%w: invalid %v", ErrParse, dest.Type())
+			return numericErr(err, dest.Type())
 		}
 
 		dest.SetInt(i)
@@ -168,11 +164,8 @@ func decodeValue(raw string, dest reflect.Value) (err error) {
 
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		u, err := strconv.ParseUint(raw, 10, dest.Type().Bits())
-		if errors.Is(err, strconv.ErrRange) {
-			return fmt.Errorf("%w: %v out of range", ErrParse, dest.Type())
-		}
 		if err != nil {
-			return fmt.Errorf("%w: invalid %v", ErrParse, dest.Type())
+			return numericErr(err, dest.Type())
 		}
 
 		dest.SetUint(u)
@@ -181,11 +174,8 @@ func decodeValue(raw string, dest reflect.Value) (err error) {
 
 	case reflect.Float32, reflect.Float64:
 		f, err := strconv.ParseFloat(raw, dest.Type().Bits())
-		if errors.Is(err, strconv.ErrRange) {
-			return fmt.Errorf("%w: %v out of range", ErrParse, dest.Type())
-		}
 		if err != nil {
-			return fmt.Errorf("%w: invalid %v", ErrParse, dest.Type())
+			return numericErr(err, dest.Type())
 		}
 
 		dest.SetFloat(f)
@@ -194,4 +184,12 @@ func decodeValue(raw string, dest reflect.Value) (err error) {
 	}
 
 	return fmt.Errorf("%w: %v", ErrUnsupportedType, dest.Type())
+}
+
+func numericErr(err error, typ reflect.Type) error {
+	if errors.Is(err, strconv.ErrRange) {
+		return fmt.Errorf("%w: %v out of range", ErrParse, typ)
+	}
+
+	return fmt.Errorf("%w: invalid %v", ErrParse, typ)
 }
