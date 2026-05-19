@@ -37,7 +37,7 @@ package main
 import (
     "fmt"
     "log"
-    "net/url"
+    "os"
     "time"
 
     "github.com/saas-craft/typedenv"
@@ -56,7 +56,7 @@ func main() {
     os.Setenv("TIMEOUT", "1s")
     os.Setenv("LOG_LEVEL", "debug")
 
-    cfg, err := Load[config]()
+    cfg, err := typedenv.Load[config]()
     if err != nil {
         log.Fatalf("load config: %v", err)
     }

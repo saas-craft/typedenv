@@ -427,6 +427,126 @@ func TestDecodeValue_TextUnmarshaler(t *testing.T) {
 	})
 }
 
+func TestDecodeValue_Pointer(t *testing.T) {
+	runDecodeValueCases(t, map[string]struct {
+		raw        string
+		value      func() reflect.Value
+		wantErr    error
+		wantErrMsg string
+		check      func(t *testing.T, val reflect.Value)
+	}{
+		"pointer to string is allocated and set": {
+			raw:   "hello",
+			value: func() reflect.Value { var s *string; return reflect.ValueOf(&s).Elem() },
+			check: func(t *testing.T, val reflect.Value) {
+				if val.IsNil() {
+					t.Fatal("got nil pointer, want allocated")
+				}
+				if got := val.Elem().String(); got != "hello" {
+					t.Errorf("got %q, want %q", got, "hello")
+				}
+			},
+		},
+		"pointer to int is allocated and set": {
+			raw:   "42",
+			value: func() reflect.Value { var i *int; return reflect.ValueOf(&i).Elem() },
+			check: func(t *testing.T, val reflect.Value) {
+				if val.IsNil() {
+					t.Fatal("got nil pointer, want allocated")
+				}
+				if got := val.Elem().Int(); got != 42 {
+					t.Errorf("got %d, want 42", got)
+				}
+			},
+		},
+		"pointer to bool is allocated and set": {
+			raw:   "true",
+			value: func() reflect.Value { var b *bool; return reflect.ValueOf(&b).Elem() },
+			check: func(t *testing.T, val reflect.Value) {
+				if val.IsNil() {
+					t.Fatal("got nil pointer, want allocated")
+				}
+				if !val.Elem().Bool() {
+					t.Error("got false, want true")
+				}
+			},
+		},
+		"pointer to float64 is allocated and set": {
+			raw:   "3.14",
+			value: func() reflect.Value { var f *float64; return reflect.ValueOf(&f).Elem() },
+			check: func(t *testing.T, val reflect.Value) {
+				if val.IsNil() {
+					t.Fatal("got nil pointer, want allocated")
+				}
+				if got := val.Elem().Float(); got != 3.14 {
+					t.Errorf("got %v, want 3.14", got)
+				}
+			},
+		},
+		"pointer to time.Duration is allocated and set": {
+			raw:   "5s",
+			value: func() reflect.Value { var d *time.Duration; return reflect.ValueOf(&d).Elem() },
+			check: func(t *testing.T, val reflect.Value) {
+				if val.IsNil() {
+					t.Fatal("got nil pointer, want allocated")
+				}
+				if got := time.Duration(val.Elem().Int()); got != 5*time.Second {
+					t.Errorf("got %v, want 5s", got)
+				}
+			},
+		},
+		"pointer to url.URL is allocated and set": {
+			raw:   "https://example.com",
+			value: func() reflect.Value { var u *url.URL; return reflect.ValueOf(&u).Elem() },
+			check: func(t *testing.T, val reflect.Value) {
+				if val.IsNil() {
+					t.Fatal("got nil pointer, want allocated")
+				}
+				got := val.Elem().Interface().(url.URL)
+				if got.Scheme != "https" {
+					t.Errorf("got scheme %q, want %q", got.Scheme, "https")
+				}
+				if got.Host != "example.com" {
+					t.Errorf("got host %q, want %q", got.Host, "example.com")
+				}
+			},
+		},
+		"pointer to TextUnmarshaler type is allocated and set": {
+			raw:   "hello",
+			value: func() reflect.Value { var c *customText; return reflect.ValueOf(&c).Elem() },
+			check: func(t *testing.T, val reflect.Value) {
+				if val.IsNil() {
+					t.Fatal("got nil pointer, want allocated")
+				}
+				if got := val.Elem().FieldByName("val").String(); got != "hello" {
+					t.Errorf("got %q, want %q", got, "hello")
+				}
+			},
+		},
+		"pointer to bool with invalid value returns parse error": {
+			raw:     "notabool",
+			value:   func() reflect.Value { var b *bool; return reflect.ValueOf(&b).Elem() },
+			wantErr: ErrParse,
+		},
+		"non-nil pointer is overwritten with new allocation": {
+			raw: "world",
+			value: func() reflect.Value {
+				existing := "old"
+				s := &existing
+				return reflect.ValueOf(&s).Elem()
+			},
+			check: func(t *testing.T, val reflect.Value) {
+				if val.IsNil() {
+					t.Fatal("got nil pointer, want allocated")
+				}
+				if got := val.Elem().String(); got != "world" {
+					t.Errorf("got %q, want %q", got, "world")
+				}
+			},
+		},
+	})
+}
+
 func TestDecodeValue_ErrorsOmitRawValue(t *testing.T) {
 	const secret = "s3cr3t-v@lue"
 

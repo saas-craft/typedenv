@@ -94,6 +94,17 @@ func decodeValue(raw string, dest reflect.Value) (err error) {
 		return errors.New("field not settable")
 	}
 
+	if dest.Kind() == reflect.Pointer {
+		elem := reflect.New(dest.Type().Elem())
+		if err := decodeValue(raw, elem.Elem()); err != nil {
+			return err
+		}
+
+		dest.Set(elem)
+
+		return nil
+	}
+
 	if dest.CanAddr() {
 		if u, ok := dest.Addr().Interface().(encoding.TextUnmarshaler); ok {
 			if err := u.UnmarshalText([]byte(raw)); err != nil {
