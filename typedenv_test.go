@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/saas-craft/secret"
 )
 
 func Example() {
@@ -745,6 +747,49 @@ func TestLoad(t *testing.T) {
 			}
 			if !strings.Contains(err.Error(), "typedenv:") {
 				t.Errorf("got %q, want error containing \"typedenv:\"", err.Error())
+			}
+		},
+	}
+
+	for name, run := range tests {
+		t.Run(name, run)
+	}
+}
+
+func TestLoad_WithSecretPackage(t *testing.T) {
+	tests := map[string]func(t *testing.T){
+		"secret string field is populated and not exposed in formatted output": func(t *testing.T) {
+			type config struct {
+				APIKey secret.Value[string] `env:"TYPEDENV_TEST_SECRET_KEY"`
+			}
+			t.Setenv("TYPEDENV_TEST_SECRET_KEY", "s3cr3t-v@lue")
+
+			cfg, err := Load[config]()
+			if err != nil {
+				t.Fatalf("Load() error = %v", err)
+			}
+			if got := cfg.APIKey.Reveal(); got != "s3cr3t-v@lue" {
+				t.Errorf("Reveal() = %q, want %q", got, "s3cr3t-v@lue")
+			}
+			if strings.Contains(fmt.Sprintf("%v", cfg), "s3cr3t-v@lue") {
+				t.Error("secret value was exposed in formatted output")
+			}
+		},
+		"secret int field is populated and not exposed in formatted output": func(t *testing.T) {
+			type config struct {
+				Port secret.Value[int] `env:"TYPEDENV_TEST_SECRET_PORT"`
+			}
+			t.Setenv("TYPEDENV_TEST_SECRET_PORT", "5432")
+
+			cfg, err := Load[config]()
+			if err != nil {
+				t.Fatalf("Load() error = %v", err)
+			}
+			if got := cfg.Port.Reveal(); got != 5432 {
+				t.Errorf("Reveal() = %d, want 5432", got)
+			}
+			if strings.Contains(fmt.Sprintf("%v", cfg), "5432") {
+				t.Error("secret value was exposed in formatted output")
 			}
 		},
 	}
