@@ -20,13 +20,12 @@ func Example() {
 		Host     string        `env:"HOST"`
 		Port     int           `env:"PORT"`
 		Timeout  time.Duration `env:"TIMEOUT"`
-		LogLevel slog.Level    `env:"LOG_LEVEL"`
+		LogLevel slog.Level    `env:"LOG_LEVEL,default=debug"`
 	}
 
 	os.Setenv("HOST", "localhost")
 	os.Setenv("PORT", "8080")
 	os.Setenv("TIMEOUT", "1s")
-	os.Setenv("LOG_LEVEL", "debug")
 
 	cfg, err := Load[config]()
 	if err != nil {
@@ -923,30 +922,54 @@ func TestDefaultValues(t *testing.T) {
 			t.Errorf("*Port = %d, want 1234", *cfg.Port)
 		}
 	})
+
+	t.Run("malformed tag returns ErrInvalidTag", func(t *testing.T) {
+		type config struct {
+			Port int `env:"TYPEDENV_DEFAULT_TYPO_PORT,defualt=80"`
+		}
+
+		_, err := Load[config]()
+		if !errors.Is(err, ErrInvalidTag) {
+			t.Errorf("Load() error = %v, want errors.Is(%v)", err, ErrInvalidTag)
+		}
+		if errors.Is(err, ErrNotFound) {
+			t.Error("ErrNotFound should not be reachable when tag itself is malformed")
+		}
+	})
 }
 
 func TestParseEnvTag(t *testing.T) {
 	tests := map[string]struct {
-		in   string
-		want fieldSpec
+		in      string
+		want    fieldSpec
+		wantErr error
 	}{
-		"plain key":                       {"KEY", fieldSpec{key: "KEY"}},
-		"empty tag":                       {"", fieldSpec{key: ""}},
-		"default with simple value":       {"KEY,default=localhost", fieldSpec{key: "KEY", defaultVal: "localhost", hasDefault: true}},
-		"default with empty value":        {"KEY,default=", fieldSpec{key: "KEY", defaultVal: "", hasDefault: true}},
-		"default value contains equals":   {"KEY,default=http://host?a=b", fieldSpec{key: "KEY", defaultVal: "http://host?a=b", hasDefault: true}},
-		"default value contains commas":   {"KEY,default=a,b,c", fieldSpec{key: "KEY", defaultVal: "a,b,c", hasDefault: true}},
-		"trailing comma without options":  {"KEY,", fieldSpec{key: "KEY"}},
-		"unknown option silently ignored": {"KEY,xyz", fieldSpec{key: "KEY"}},
-		"typoed default key ignored":      {"KEY,defualt=x", fieldSpec{key: "KEY"}},
-		"uppercase default key ignored":   {"KEY,DEFAULT=x", fieldSpec{key: "KEY"}},
-		"default not in first position":   {"KEY,foo=bar,default=x", fieldSpec{key: "KEY"}},
-		"empty key with default":          {",default=x", fieldSpec{key: "", defaultVal: "x", hasDefault: true}},
+		"plain key":                     {in: "KEY", want: fieldSpec{key: "KEY"}},
+		"empty tag":                     {in: "", want: fieldSpec{key: ""}},
+		"default with simple value":     {in: "KEY,default=localhost", want: fieldSpec{key: "KEY", defaultVal: "localhost", hasDefault: true}},
+		"default with empty value":      {in: "KEY,default=", want: fieldSpec{key: "KEY", defaultVal: "", hasDefault: true}},
+		"default value contains equals": {in: "KEY,default=http://host?a=b", want: fieldSpec{key: "KEY", defaultVal: "http://host?a=b", hasDefault: true}},
+		"default value contains commas": {in: "KEY,default=a,b,c", want: fieldSpec{key: "KEY", defaultVal: "a,b,c", hasDefault: true}},
+		"empty key with default":        {in: ",default=x", want: fieldSpec{key: "", defaultVal: "x", hasDefault: true}},
+		"trailing comma is malformed":   {in: "KEY,", wantErr: ErrInvalidTag},
+		"option without value":          {in: "KEY,xyz", wantErr: ErrInvalidTag},
+		"typoed default key":            {in: "KEY,defualt=x", wantErr: ErrInvalidTag},
+		"uppercase default key":         {in: "KEY,DEFAULT=x", wantErr: ErrInvalidTag},
+		"unknown option before default": {in: "KEY,foo=bar,default=x", wantErr: ErrInvalidTag},
 	}
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			got := parseEnvTag(tc.in)
+			got, err := parseEnvTag(tc.in)
+			if tc.wantErr != nil {
+				if !errors.Is(err, tc.wantErr) {
+					t.Errorf("parseEnvTag(%q) err = %v, want errors.Is(%v)", tc.in, err, tc.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("parseEnvTag(%q) unexpected error: %v", tc.in, err)
+			}
 			if got != tc.want {
 				t.Errorf("parseEnvTag(%q) = %+v, want %+v", tc.in, got, tc.want)
 			}

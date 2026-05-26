@@ -20,6 +20,7 @@ var (
 	ErrParse           = errors.New("invalid value")
 	ErrUnsupportedType = errors.New("unsupported type")
 	ErrInvalidDefault  = errors.New("invalid default value")
+	ErrInvalidTag      = errors.New("invalid env tag")
 )
 
 // Load reads operating system environment variables into a new instance of S,
@@ -78,7 +79,11 @@ func decodeStructField(field reflect.StructField, val reflect.Value, lookup sour
 		return fmt.Errorf("%q: %w", field.Name, ErrUnexportedField)
 	}
 
-	spec := parseEnvTag(tag)
+	spec, err := parseEnvTag(tag)
+	if err != nil {
+		return fmt.Errorf("%q: %w", field.Name, err)
+	}
+
 	raw, isDefault, err := resolveRaw(spec, lookup)
 	if err != nil {
 		return fmt.Errorf("%q: %w", spec.key, err)
@@ -94,18 +99,21 @@ func decodeStructField(field reflect.StructField, val reflect.Value, lookup sour
 	return nil
 }
 
-func parseEnvTag(tag string) fieldSpec {
+func parseEnvTag(tag string) (fieldSpec, error) {
 	key, rest, hasOptions := strings.Cut(tag, ",")
 	if !hasOptions {
-		return fieldSpec{key: tag}
+		return fieldSpec{key: tag}, nil
 	}
 
-	const prefix = "default="
-	if strings.HasPrefix(rest, prefix) {
-		return fieldSpec{key: key, defaultVal: rest[len(prefix):], hasDefault: true}
+	name, value, hasValue := strings.Cut(rest, "=")
+	if !hasValue {
+		return fieldSpec{}, fmt.Errorf("%w: option %q missing value", ErrInvalidTag, name)
+	}
+	if name != "default" {
+		return fieldSpec{}, fmt.Errorf("%w: unknown option %q", ErrInvalidTag, name)
 	}
 
-	return fieldSpec{key: key}
+	return fieldSpec{key: key, defaultVal: value, hasDefault: true}, nil
 }
 
 func resolveRaw(spec fieldSpec, lookup source) (raw string, isDefault bool, err error) {

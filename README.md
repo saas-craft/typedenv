@@ -7,7 +7,7 @@ type Config struct {
     Host     string        `env:"HOST"`
     Port     int           `env:"PORT"`
     Timeout  time.Duration `env:"TIMEOUT"`
-    LogLevel slog.Level    `env:"LOG_LEVEL"`
+    LogLevel slog.Level    `env:"LOG_LEVEL,default=debug"`
 }
 
 cfg, err := typedenv.Load[Config]()
@@ -17,6 +17,7 @@ Unparseable and missing key values are returned in one error.
 
 ## Features
 
+- Optional default value for keys
 - Looks up only the keys you declare
 - Keeps raw values out of errors
 - No use of the unsafe package
@@ -38,6 +39,7 @@ import (
     "fmt"
     "log"
     "os"
+    "log/slog"
     "time"
 
     "github.com/saas-craft/typedenv"
@@ -48,13 +50,12 @@ func main() {
         Host     string        `env:"HOST"`
         Port     int           `env:"PORT"`
         Timeout  time.Duration `env:"TIMEOUT"`
-        LogLevel slog.Level    `env:"LOG_LEVEL"`
+        LogLevel slog.Level    `env:"LOG_LEVEL,default=debug"`
     }
 
     os.Setenv("HOST", "localhost")
     os.Setenv("PORT", "8080")
     os.Setenv("TIMEOUT", "1s")
-    os.Setenv("LOG_LEVEL", "debug")
 
     cfg, err := typedenv.Load[config]()
     if err != nil {
