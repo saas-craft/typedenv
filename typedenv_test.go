@@ -798,3 +798,229 @@ func TestLoad_WithSecretPackage(t *testing.T) {
 		t.Run(name, run)
 	}
 }
+
+func TestDefaultValues(t *testing.T) {
+	t.Run("default used when env var absent", func(t *testing.T) {
+		type config struct {
+			Host    string        `env:"TYPEDENV_DEFAULT_HOST,default=localhost"`
+			Port    int           `env:"TYPEDENV_DEFAULT_PORT,default=9090"`
+			Enabled bool          `env:"TYPEDENV_DEFAULT_ENABLED,default=true"`
+			Timeout time.Duration `env:"TYPEDENV_DEFAULT_TIMEOUT,default=5s"`
+			Rate    float64       `env:"TYPEDENV_DEFAULT_RATE,default=1.5"`
+		}
+
+		cfg, err := Load[config]()
+		if err != nil {
+			t.Fatalf("Load() error = %v", err)
+		}
+		if cfg.Host != "localhost" {
+			t.Errorf("Host = %q, want %q", cfg.Host, "localhost")
+		}
+		if cfg.Port != 9090 {
+			t.Errorf("Port = %d, want 9090", cfg.Port)
+		}
+		if !cfg.Enabled {
+			t.Errorf("Enabled = false, want true")
+		}
+		if cfg.Timeout != 5*time.Second {
+			t.Errorf("Timeout = %v, want 5s", cfg.Timeout)
+		}
+		if cfg.Rate != 1.5 {
+			t.Errorf("Rate = %v, want 1.5", cfg.Rate)
+		}
+	})
+
+	t.Run("env var takes precedence over default", func(t *testing.T) {
+		type config struct {
+			Host string `env:"TYPEDENV_DEFAULT_OVERRIDE_HOST,default=localhost"`
+			Port int    `env:"TYPEDENV_DEFAULT_OVERRIDE_PORT,default=9090"`
+		}
+		t.Setenv("TYPEDENV_DEFAULT_OVERRIDE_HOST", "example.com")
+		t.Setenv("TYPEDENV_DEFAULT_OVERRIDE_PORT", "443")
+
+		cfg, err := Load[config]()
+		if err != nil {
+			t.Fatalf("Load() error = %v", err)
+		}
+		if cfg.Host != "example.com" {
+			t.Errorf("Host = %q, want %q", cfg.Host, "example.com")
+		}
+		if cfg.Port != 443 {
+			t.Errorf("Port = %d, want 443", cfg.Port)
+		}
+	})
+
+	t.Run("invalid default returns ErrInvalidDefault", func(t *testing.T) {
+		type config struct {
+			Port int `env:"TYPEDENV_DEFAULT_BAD_PORT,default=notanint"`
+		}
+
+		_, err := Load[config]()
+		if !errors.Is(err, ErrInvalidDefault) {
+			t.Errorf("Load() error = %v, want errors.Is(%v)", err, ErrInvalidDefault)
+		}
+		if errors.Is(err, ErrParse) {
+			t.Error("ErrParse should not be reachable through ErrInvalidDefault")
+		}
+	})
+
+	t.Run("invalid default does not shadow ErrNotFound for other field", func(t *testing.T) {
+		type config struct {
+			Port    int    `env:"TYPEDENV_DEFAULT_BAD2_PORT,default=notanint"`
+			Missing string `env:"TYPEDENV_DEFAULT_BAD2_MISSING"`
+		}
+
+		_, err := Load[config]()
+		if !errors.Is(err, ErrInvalidDefault) {
+			t.Errorf("want ErrInvalidDefault in joined error, got %v", err)
+		}
+		if !errors.Is(err, ErrNotFound) {
+			t.Errorf("want ErrNotFound in joined error, got %v", err)
+		}
+	})
+
+	t.Run("default with equals sign in value", func(t *testing.T) {
+		type config struct {
+			Endpoint string `env:"TYPEDENV_DEFAULT_URL,default=http://host?foo=bar"`
+		}
+
+		cfg, err := Load[config]()
+		if err != nil {
+			t.Fatalf("Load() error = %v", err)
+		}
+		if cfg.Endpoint != "http://host?foo=bar" {
+			t.Errorf("Endpoint = %q, want %q", cfg.Endpoint, "http://host?foo=bar")
+		}
+	})
+
+	t.Run("default with comma in string value", func(t *testing.T) {
+		type config struct {
+			List string `env:"TYPEDENV_DEFAULT_CSV,default=a,b,c"`
+		}
+
+		cfg, err := Load[config]()
+		if err != nil {
+			t.Fatalf("Load() error = %v", err)
+		}
+		if cfg.List != "a,b,c" {
+			t.Errorf("List = %q, want %q", cfg.List, "a,b,c")
+		}
+	})
+
+	t.Run("pointer field with default", func(t *testing.T) {
+		type config struct {
+			Port *int `env:"TYPEDENV_DEFAULT_PTR_PORT,default=1234"`
+		}
+
+		cfg, err := Load[config]()
+		if err != nil {
+			t.Fatalf("Load() error = %v", err)
+		}
+		if cfg.Port == nil {
+			t.Fatal("Port is nil, want non-nil pointer")
+		}
+		if *cfg.Port != 1234 {
+			t.Errorf("*Port = %d, want 1234", *cfg.Port)
+		}
+	})
+}
+
+func TestParseEnvTag(t *testing.T) {
+	tests := map[string]struct {
+		in   string
+		want fieldSpec
+	}{
+		"plain key":                       {"KEY", fieldSpec{key: "KEY"}},
+		"empty tag":                       {"", fieldSpec{key: ""}},
+		"default with simple value":       {"KEY,default=localhost", fieldSpec{key: "KEY", defaultVal: "localhost", hasDefault: true}},
+		"default with empty value":        {"KEY,default=", fieldSpec{key: "KEY", defaultVal: "", hasDefault: true}},
+		"default value contains equals":   {"KEY,default=http://host?a=b", fieldSpec{key: "KEY", defaultVal: "http://host?a=b", hasDefault: true}},
+		"default value contains commas":   {"KEY,default=a,b,c", fieldSpec{key: "KEY", defaultVal: "a,b,c", hasDefault: true}},
+		"trailing comma without options":  {"KEY,", fieldSpec{key: "KEY"}},
+		"unknown option silently ignored": {"KEY,xyz", fieldSpec{key: "KEY"}},
+		"typoed default key ignored":      {"KEY,defualt=x", fieldSpec{key: "KEY"}},
+		"uppercase default key ignored":   {"KEY,DEFAULT=x", fieldSpec{key: "KEY"}},
+		"default not in first position":   {"KEY,foo=bar,default=x", fieldSpec{key: "KEY"}},
+		"empty key with default":          {",default=x", fieldSpec{key: "", defaultVal: "x", hasDefault: true}},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			got := parseEnvTag(tc.in)
+			if got != tc.want {
+				t.Errorf("parseEnvTag(%q) = %+v, want %+v", tc.in, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestResolveRaw(t *testing.T) {
+	staticLookup := func(values map[string]string) source {
+		return func(key string) (string, bool) {
+			v, ok := values[key]
+			return v, ok
+		}
+	}
+
+	tests := map[string]struct {
+		spec          fieldSpec
+		env           map[string]string
+		wantRaw       string
+		wantIsDefault bool
+		wantErr       error
+	}{
+		"env var set, no default": {
+			spec:    fieldSpec{key: "K"},
+			env:     map[string]string{"K": "from-env"},
+			wantRaw: "from-env",
+		},
+		"env var set, default also present (env wins)": {
+			spec:    fieldSpec{key: "K", defaultVal: "fallback", hasDefault: true},
+			env:     map[string]string{"K": "from-env"},
+			wantRaw: "from-env",
+		},
+		"env var absent, no default": {
+			spec:    fieldSpec{key: "K"},
+			env:     map[string]string{},
+			wantErr: ErrNotFound,
+		},
+		"env var absent, default present": {
+			spec:          fieldSpec{key: "K", defaultVal: "fallback", hasDefault: true},
+			env:           map[string]string{},
+			wantRaw:       "fallback",
+			wantIsDefault: true,
+		},
+		"env var absent, empty default present": {
+			spec:          fieldSpec{key: "K", defaultVal: "", hasDefault: true},
+			env:           map[string]string{},
+			wantRaw:       "",
+			wantIsDefault: true,
+		},
+		"env var present but empty string (still counts as set)": {
+			spec:    fieldSpec{key: "K", defaultVal: "fallback", hasDefault: true},
+			env:     map[string]string{"K": ""},
+			wantRaw: "",
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			raw, isDefault, err := resolveRaw(tc.spec, staticLookup(tc.env))
+			if tc.wantErr != nil {
+				if !errors.Is(err, tc.wantErr) {
+					t.Errorf("err = %v, want errors.Is(%v)", err, tc.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if raw != tc.wantRaw {
+				t.Errorf("raw = %q, want %q", raw, tc.wantRaw)
+			}
+			if isDefault != tc.wantIsDefault {
+				t.Errorf("isDefault = %v, want %v", isDefault, tc.wantIsDefault)
+			}
+		})
+	}
+}

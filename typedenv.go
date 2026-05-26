@@ -9,6 +9,7 @@ import (
 	"os"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -18,6 +19,7 @@ var (
 	ErrNotFound        = errors.New("variable not found for key")
 	ErrParse           = errors.New("invalid value")
 	ErrUnsupportedType = errors.New("unsupported type")
+	ErrInvalidDefault  = errors.New("invalid default value")
 )
 
 // Load reads operating system environment variables into a new instance of S,
@@ -60,6 +62,12 @@ func decodeStruct[S any](lookup source) (S, error) {
 	return s, errors.Join(errs...)
 }
 
+type fieldSpec struct {
+	key        string
+	defaultVal string
+	hasDefault bool
+}
+
 func decodeStructField(field reflect.StructField, val reflect.Value, lookup source) error {
 	tag, tagged := field.Tag.Lookup("env")
 	if !tagged {
@@ -70,16 +78,46 @@ func decodeStructField(field reflect.StructField, val reflect.Value, lookup sour
 		return fmt.Errorf("%q: %w", field.Name, ErrUnexportedField)
 	}
 
-	raw, ok := lookup(tag)
-	if !ok {
-		return fmt.Errorf("%q: %w", tag, ErrNotFound)
+	spec := parseEnvTag(tag)
+	raw, isDefault, err := resolveRaw(spec, lookup)
+	if err != nil {
+		return fmt.Errorf("%q: %w", spec.key, err)
 	}
 
 	if err := decodeValue(raw, val); err != nil {
-		return fmt.Errorf("%q: %w", tag, err)
+		if isDefault {
+			return fmt.Errorf("%q: %w: %v", spec.key, ErrInvalidDefault, err)
+		}
+		return fmt.Errorf("%q: %w", spec.key, err)
 	}
 
 	return nil
+}
+
+func parseEnvTag(tag string) fieldSpec {
+	key, rest, hasOptions := strings.Cut(tag, ",")
+	if !hasOptions {
+		return fieldSpec{key: tag}
+	}
+
+	const prefix = "default="
+	if strings.HasPrefix(rest, prefix) {
+		return fieldSpec{key: key, defaultVal: rest[len(prefix):], hasDefault: true}
+	}
+
+	return fieldSpec{key: key}
+}
+
+func resolveRaw(spec fieldSpec, lookup source) (raw string, isDefault bool, err error) {
+	if v, ok := lookup(spec.key); ok {
+		return v, false, nil
+	}
+
+	if spec.hasDefault {
+		return spec.defaultVal, true, nil
+	}
+
+	return "", false, ErrNotFound
 }
 
 func decodeValue(raw string, dest reflect.Value) (err error) {
